@@ -16,5 +16,8 @@
 # Package Manager
 - Use bun as the package manager (e.g., `bun install`, `bun add`). Confidence: 0.50
 
+# Heroku Deployment
+- Use Procfile for Heroku deployment instead of Docker/container-based approach. Confidence: 0.65
+
 # UI Components
 See [ui-components/taste.md](ui-components/taste.md)
