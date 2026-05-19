@@ -1,0 +1,111 @@
+/* BlockNote + HeroUI theme integration */
+
+/* --- BlockNote base CSS variables (.bn-root) --- */
+
+.bn-root {
+  --bn-colors-editor-text: oklch(0.145 0 0);
+  --bn-colors-editor-background: oklch(1 0 0);
+  --bn-colors-menu-text: oklch(0.145 0 0);
+  --bn-colors-menu-background: oklch(1 0 0);
+  --bn-colors-tooltip-text: oklch(0.145 0 0);
+  --bn-colors-tooltip-background: oklch(0.97 0 0);
+  --bn-colors-hovered-text: oklch(0.145 0 0);
+  --bn-colors-hovered-background: oklch(0.97 0 0);
+  --bn-colors-selected-text: oklch(0.985 0 0);
+  --bn-colors-selected-background: oklch(0.205 0 0);
+  --bn-colors-disabled-text: oklch(0.556 0 0);
+  --bn-colors-disabled-background: oklch(0.97 0 0);
+  --bn-colors-shadow: oklch(0 0 0 / 0.1);
+  --bn-colors-border: oklch(0.922 0 0);
+  --bn-colors-side-menu: oklch(0.708 0 0);
+  --bn-font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --bn-border-radius: 0.75rem;
+}
+
+.bn-root[data-color-scheme="dark"] {
+  --bn-colors-editor-text: oklch(0.985 0 0);
+  --bn-colors-editor-background: oklch(0.145 0 0);
+  --bn-colors-menu-text: oklch(0.985 0 0);
+  --bn-colors-menu-background: oklch(0.205 0 0);
+  --bn-colors-tooltip-text: oklch(0.985 0 0);
+  --bn-colors-tooltip-background: oklch(0.269 0 0);
+  --bn-colors-hovered-text: oklch(0.985 0 0);
+  --bn-colors-hovered-background: oklch(0.269 0 0);
+  --bn-colors-selected-text: oklch(0.205 0 0);
+  --bn-colors-selected-background: oklch(0.87 0 0);
+  --bn-colors-disabled-text: oklch(0.708 0 0);
+  --bn-colors-disabled-background: oklch(0.269 0 0);
+  --bn-colors-shadow: oklch(0 0 0 / 0.3);
+  --bn-colors-border: oklch(1 0 0 / 0.1);
+  --bn-colors-side-menu: oklch(0.556 0 0);
+}
+
+/* --- Mantine CSS variables (.bn-mantine) — mapped to HeroUI tokens --- */
+
+.bn-mantine {
+  --mantine-color-body: oklch(1 0 0);
+  --mantine-color-text: oklch(0.145 0 0);
+  --mantine-color-dimmed: oklch(0.556 0 0);
+  --mantine-radius-default: 0.75rem;
+  --mantine-font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --mantine-font-family-headings: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* Blue scale → HeroUI primary (neutral dark) */
+  --mantine-color-blue-0: oklch(0.985 0 0);
+  --mantine-color-blue-1: oklch(0.97 0 0);
+  --mantine-color-blue-2: oklch(0.922 0 0);
+  --mantine-color-blue-3: oklch(0.87 0 0);
+  --mantine-color-blue-4: oklch(0.708 0 0);
+  --mantine-color-blue-5: oklch(0.556 0 0);
+  --mantine-color-blue-6: oklch(0.439 0 0);
+  --mantine-color-blue-7: oklch(0.371 0 0);
+  --mantine-color-blue-8: oklch(0.269 0 0);
+  --mantine-color-blue-9: oklch(0.205 0 0);
+
+  --mantine-color-blue-filled: var(--mantine-color-blue-9);
+  --mantine-color-blue-filled-hover: var(--mantine-color-blue-8);
+  --mantine-color-blue-light: oklch(0.97 0 0);
+  --mantine-color-blue-light-hover: oklch(0.922 0 0);
+  --mantine-color-blue-light-color: oklch(0.205 0 0);
+  --mantine-color-blue-outline: var(--mantine-color-blue-9);
+  --mantine-color-blue-outline-hover: oklch(0.985 0 0 / 0.05);
+
+  /* Gray scale → HeroUI muted/surface */
+  --mantine-color-gray-0: oklch(1 0 0);
+  --mantine-color-gray-1: oklch(0.985 0 0);
+  --mantine-color-gray-2: oklch(0.97 0 0);
+  --mantine-color-gray-3: oklch(0.922 0 0);
+  --mantine-color-gray-4: oklch(0.87 0 0);
+  --mantine-color-gray-5: oklch(0.708 0 0);
+  --mantine-color-gray-6: oklch(0.556 0 0);
+  --mantine-color-gray-7: oklch(0.439 0 0);
+  --mantine-color-gray-8: oklch(0.371 0 0);
+  --mantine-color-gray-9: oklch(0.269 0 0);
+
+  /* Dark scale → for dark surfaces */
+  --mantine-color-dark-0: oklch(0.87 0 0);
+  --mantine-color-dark-1: oklch(0.708 0 0);
+  --mantine-color-dark-2: oklch(0.556 0 0);
+  --mantine-color-dark-3: oklch(0.439 0 0);
+  --mantine-color-dark-4: oklch(0.371 0 0);
+  --mantine-color-dark-5: oklch(0.269 0 0);
+  --mantine-color-dark-6: oklch(0.205 0 0);
+  --mantine-color-dark-7: oklch(0.145 0 0);
+  --mantine-color-dark-8: oklch(0.105 0 0);
+  --mantine-color-dark-9: oklch(0.07 0 0);
+}
+
+/* Dark mode */
+.bn-mantine[data-mantine-color-scheme="dark"] {
+  --mantine-color-body: oklch(0.145 0 0);
+  --mantine-color-text: oklch(0.985 0 0);
+  --mantine-color-dimmed: oklch(0.708 0 0);
+
+  --mantine-color-blue-filled: oklch(0.87 0 0);
+  --mantine-color-blue-filled-hover: oklch(0.708 0 0);
+  --mantine-color-blue-light: oklch(0.269 0 0);
+  --mantine-color-blue-light-hover: oklch(0.371 0 0);
+  --mantine-color-blue-light-color: oklch(0.87 0 0);
+  --mantine-color-blue-outline: oklch(0.87 0 0);
+  --mantine-color-blue-outline-hover: oklch(0.985 0 0 / 0.05);
+}

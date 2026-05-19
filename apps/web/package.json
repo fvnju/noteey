@@ -1,0 +1,47 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@blocknote/core": "^0.50.0",
+    "@blocknote/mantine": "^0.50.0",
+    "@blocknote/react": "^0.50.0",
+    "@noteey/backend": "workspace:*",
+    "@noteey/env": "workspace:*",
+    "@noteey/ui": "workspace:*",
+    "@tiptap/core": "^3.23.1",
+    "@tiptap/extension-bubble-menu": "^3.23.1",
+    "@tiptap/extension-placeholder": "^3.23.1",
+    "@tiptap/pm": "^3.23.1",
+    "@tiptap/react": "^3.23.1",
+    "@tiptap/starter-kit": "^3.23.1",
+    "@tiptap/suggestion": "^3.23.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "cmdk": "^1.1.1",
+    "convex": "catalog:",
+    "dotenv": "catalog:",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "catalog:",
+    "next": "^16.2.0",
+    "next-themes": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "socket.io-client": "^4.8.3",
+    "sonner": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@noteey/config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^20",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  }
+}
