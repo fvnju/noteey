@@ -25,4 +25,4 @@ ENV NODE_ENV=production
 
 EXPOSE 1235
 
-CMD ["sh", "-c", "exec bun src/server.ts"]
+CMD ["sh", "-c", "exec bun run realtime:start"]
