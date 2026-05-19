@@ -12,6 +12,5 @@ build
 *.log
 apps/web
 packages/ui
-packages/env
 convex
 docs
