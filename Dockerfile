@@ -9,11 +9,9 @@ COPY package.json bun.lock turbo.json ./
 COPY packages/config/package.json packages/config/
 COPY packages/config/tsconfig.base.json packages/config/
 COPY packages/backend/package.json packages/backend/
-COPY packages/backend/tsconfig.json packages/backend/
 COPY packages/backend/convex/ packages/backend/convex/
 
 COPY apps/realtime/package.json apps/realtime/
-COPY apps/realtime/tsconfig.json apps/realtime/
 COPY apps/realtime/src/ apps/realtime/src/
 
 RUN bun install --frozen-lockfile
