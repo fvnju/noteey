@@ -1,0 +1,3 @@
+[[io.buildpacks.group]]
+  id = "kilterset/bun"
+  uri = "https://github.com/kilterset/heroku-bun-buildpack/releases/download/v0.0.2/buildpack-bun.cnb"
