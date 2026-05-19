@@ -1,5 +1,3 @@
 build:
   docker:
-    web:
-      dockerfile: apps/realtime/Dockerfile
-      context: .
+    web: Dockerfile
