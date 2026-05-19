@@ -1,0 +1,17 @@
+node_modules
+.turbo
+.nx
+dist
+build
+*.tsbuildinfo
+.env
+.env*.local
+*.db
+.git
+.DS_Store
+*.log
+apps/web
+packages/ui
+packages/env
+convex
+docs
