@@ -516,6 +516,7 @@ export default function AppPage() {
           sharedNotesLoading={sharedNotes === undefined}
           noteId={noteId}
           noteTitle={title}
+          isOwner={isOwner}
           onSelectNoteAction={handleSelectNote}
           onCreateNote={handleCreateNote}
           onDeleteNote={handleDeleteNote}

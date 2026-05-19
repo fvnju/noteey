@@ -7,6 +7,7 @@ import type { BlockNoteEditor } from "@blocknote/core";
 type RemoteSelection = {
   userId: string;
   name: string;
+  picture: string | null;
   color: string;
   from: number;
   to: number;
@@ -15,7 +16,10 @@ type RemoteSelection = {
 export type ComputedCursor = {
   userId: string;
   name: string;
+  picture: string | null;
   color: string;
+  /** Unique key for React rendering (userId + optional line index). */
+  key: string;
   /** A caret (collapsed selection) when true, a range when false. */
   collapsed: boolean;
   /** Overlay-relative pixel coordinates. */
@@ -179,44 +183,78 @@ export function useRemoteCursors({
     for (const sel of remoteSelections) {
       const from = clamp(sel.from, 0, docSize);
       const to = clamp(sel.to, 0, docSize);
-      let fc: { top: number; bottom: number; left: number; right: number };
-      let tc: { top: number; bottom: number; left: number; right: number };
-      try {
-        fc = view.coordsAtPos(from);
-        tc = from === to ? fc : view.coordsAtPos(to);
-      } catch {
-        continue;
-      }
-
       const name = sel.name || "Anonymous";
       const color = sel.color || "#7c3aed";
 
       if (from === to) {
-        next.push({
-          userId: sel.userId,
-          name,
-          color,
-          collapsed: true,
-          left: fc.left - overlayRect.left,
-          top: fc.top - overlayRect.top,
-          width: 2,
-          height: Math.max(12, fc.bottom - fc.top),
-        });
-      } else {
-        const left = Math.min(fc.left, tc.left) - overlayRect.left;
-        const top = Math.min(fc.top, tc.top) - overlayRect.top;
-        const right = Math.max(fc.right, tc.right) - overlayRect.left;
-        const bottom = Math.max(fc.bottom, tc.bottom) - overlayRect.top;
-        next.push({
-          userId: sel.userId,
-          name,
-          color,
-          collapsed: false,
-          left,
-          top,
-          width: Math.max(2, right - left),
-          height: Math.max(12, bottom - top),
-        });
+        try {
+          const fc = view.coordsAtPos(from);
+          next.push({
+            userId: sel.userId,
+            name,
+            picture: sel.picture,
+            color,
+            key: sel.userId,
+            collapsed: true,
+            left: fc.left - overlayRect.left,
+            top: fc.top - overlayRect.top,
+            width: 2,
+            height: Math.max(12, fc.bottom - fc.top),
+          });
+        } catch {
+          continue;
+        }
+        continue;
+      }
+
+      // Non-collapsed selection: compute per-line rectangles.
+      const start = Math.min(from, to);
+      const end = Math.max(from, to);
+      const doc = view.state.doc;
+
+      let pos = start;
+      let lineIdx = 0;
+
+      while (pos < end && lineIdx < 500) {
+        const resolved = doc.resolve(pos);
+        const lineEnd = resolved.end();
+
+        if (lineEnd <= pos) {
+          pos = lineEnd + 1;
+          continue;
+        }
+
+        const segEnd = Math.min(end, lineEnd);
+        const segStartPos = pos;
+        const segEndPos = segEnd === lineEnd ? lineEnd - 1 : segEnd;
+
+        try {
+          const sc = view.coordsAtPos(segStartPos);
+          const ec = view.coordsAtPos(segEndPos);
+
+          const left = Math.min(sc.left, ec.left) - overlayRect.left;
+          const top = Math.min(sc.top, ec.top) - overlayRect.top;
+          const right = Math.max(sc.right, ec.right) - overlayRect.left;
+          const bottom = Math.max(sc.bottom, ec.bottom) - overlayRect.top;
+
+          next.push({
+            userId: sel.userId,
+            name,
+            picture: sel.picture,
+            color,
+            key: `${sel.userId}-${lineIdx}`,
+            collapsed: false,
+            left,
+            top,
+            width: Math.max(2, right - left),
+            height: Math.max(12, bottom - top),
+          });
+        } catch {
+          // coordsAtPos can fail at node boundaries — skip this line segment.
+        }
+
+        pos = lineEnd;
+        lineIdx++;
       }
     }
 

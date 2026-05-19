@@ -21,6 +21,7 @@ type UserInfo = {
 type CursorPosition = {
   userId: string;
   name: string;
+  picture: string | null;
   from: number;
   to: number;
 };
@@ -34,6 +35,7 @@ type UseCollabSocketOptions = {
 type RemoteCursor = {
   userId: string;
   name: string;
+  picture: string | null;
   color: string;
   from: number;
   to: number;

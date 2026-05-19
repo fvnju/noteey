@@ -1,12 +1,7 @@
 # UI Components
-- For the profile pill modal: display notes shared to a user in the "Shared with Me" section, not the normal user notes section. Confidence: 0.65
+- For remote cursor labels: render the user's avatar/profile picture instead of their account name text. Confidence: 0.65
 - Prefer HeroUI components over @base-ui/react based components for dropdown menus, pills, and other interactive UI patterns. Confidence: 0.65
 - HeroUI v3 DropdownTrigger already renders a `<button>` — never nest a Button component inside it; use native elements or an `asChild` pattern for custom trigger content. Confidence: 0.70
 - For text shimmer loading effects, use the project's TextShimmer component (apps/web/src/components/text-shimmer.tsx) instead of HeroUI's Skeleton. Confidence: 0.70
 - For modal/dialog overlays (like the Manage Tags dialog), use the project's MorphingDialog component (apps/web/src/components/morphing-dialog.tsx) which prevents layout shift by keeping the trigger button in the DOM. Confidence: 0.65
-- For MorphingDialog content: include close buttons/X icons inside the morphing content so they animate with the morph transition. Confidence: 0.70
-- For MorphingDialog close buttons: use relative positioning instead of absolute positioning to keep the icon in the card's flow layout. Confidence: 0.70
-- When using HeroUI ScrollShadow, do not use the hideScrollBar prop — keep the native scrollbar visible. Confidence: 0.65
-- For toast notifications, import from `@heroui/react` (`import { Toast, toast } from '@heroui/react'`), not sonner. Confidence: 0.85
-- HeroUI `ToastProvider` must be placed as a sibling element (`<ToastProvider />`), not as a wrapper around children — wrapping children blocks rendering entirely. Confidence: 0.75
-- For icon-only buttons, use HeroUI `<Button isIconOnly variant="tertiary" size="sm">` instead of native `<button>` elements. Confidence: 0.65
+- For MorphingDialog content: do not include any close button or X icon inside the dialog at all. The dialog closes via outside click/Escape. Confidence: 0.70

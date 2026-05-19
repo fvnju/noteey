@@ -15,12 +15,6 @@ const POSITION_TRANSITION = {
   restDelta: 0.5,
 };
 
-const SIZE_TRANSITION = {
-  type: "tween" as const,
-  duration: 0.12,
-  ease: "easeOut" as const,
-};
-
 const FADE_TRANSITION = {
   type: "tween" as const,
   duration: 0.15,
@@ -28,73 +22,92 @@ const FADE_TRANSITION = {
 };
 
 /**
- * Renders animated remote-user carets and selections inside a positioned
- * overlay. Position changes spring smoothly between locations; size and
- * opacity tween. Cursors fade in/out as users join/leave the document.
+ * Renders animated remote-user carets and selection highlights inside a
+ * positioned overlay. Position changes spring smoothly between locations.
+ * Cursors fade in/out as users join/leave the document. Multi-line
+ * selections are split into per-line rectangles so only selected text
+ * is highlighted, not the full content block.
  */
 export function RemoteCursorsLayer({ cursors }: RemoteCursorsLayerProps) {
   return (
     <AnimatePresence initial={false}>
       {cursors.map((c) => (
         <motion.div
-          key={c.userId}
+          key={c.key}
           initial={{
             opacity: 0,
             x: c.left,
             y: c.top,
-            width: c.width,
-            height: c.height,
           }}
           animate={{
             opacity: 1,
             x: c.left,
             y: c.top,
-            width: c.width,
-            height: c.height,
           }}
           exit={{ opacity: 0 }}
           transition={{
             x: POSITION_TRANSITION,
             y: POSITION_TRANSITION,
-            width: SIZE_TRANSITION,
-            height: SIZE_TRANSITION,
             opacity: FADE_TRANSITION,
           }}
           style={{
             position: "absolute",
             top: 0,
             left: 0,
+            width: c.collapsed ? 2 : c.width,
+            height: c.height,
             pointerEvents: "none",
-            background: c.collapsed ? c.color : `${c.color}33`,
+            background: c.collapsed ? c.color : `${c.color}1f`,
             borderBottom: c.collapsed ? undefined : `2px solid ${c.color}`,
             borderRadius: c.collapsed ? 1 : 0,
-            willChange: "transform, width, height, opacity",
+            willChange: "transform, opacity",
           }}
           aria-hidden="true"
         >
-          <motion.span
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={FADE_TRANSITION}
-            style={{
-              position: "absolute",
-              top: -2,
-              left: 0,
-              transform: "translateY(-100%)",
-              fontSize: 10,
-              fontWeight: 600,
-              lineHeight: 1,
-              padding: "2px 5px",
-              borderRadius: "3px 3px 3px 0",
-              whiteSpace: "nowrap",
-              background: c.color,
-              color: "#fff",
-              userSelect: "none",
-            }}
-          >
-            {c.name}
-          </motion.span>
+          {c.collapsed && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={FADE_TRANSITION}
+              style={{
+                position: "absolute",
+                top: -18,
+                left: 0,
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                border: `2px solid ${c.color}`,
+                overflow: "hidden",
+                pointerEvents: "none",
+                userSelect: "none",
+              }}
+            >
+              {c.picture ? (
+                <img
+                  src={c.picture}
+                  alt={c.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    height: "100%",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: c.color,
+                    background: `${c.color}1a`,
+                  }}
+                >
+                  {(c.name || "?")[0].toUpperCase()}
+                </span>
+              )}
+            </motion.span>
+          )}
         </motion.div>
       ))}
     </AnimatePresence>

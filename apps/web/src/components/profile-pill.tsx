@@ -44,6 +44,7 @@ type ProfilePillProps = {
   sharedNotesLoading?: boolean;
   noteId?: string | null;
   noteTitle?: string;
+  isOwner?: boolean;
   onSelectNoteAction?: (id: string) => void;
   onCreateNote?: () => void;
   onDeleteNote?: (id: string) => void;
@@ -62,6 +63,7 @@ export function ProfilePill({
   sharedNotesLoading = false,
   noteId,
   noteTitle,
+  isOwner = false,
   onSelectNoteAction: onSelectNote,
   onCreateNote,
   onDeleteNote,
@@ -203,13 +205,14 @@ export function ProfilePill({
                         note={note}
                         isSelected={noteId === note._id}
                         onDelete={() => onDeleteNote?.(note._id)}
+                        canDelete
                       />
                     ))
                   )}
                 </DropdownMenu>
               </DropdownPopover>
             </DropdownSubmenuTrigger>
-            {hasNote && onShareNote && (
+            {hasNote && isOwner && onShareNote && (
               <DropdownItem
                 id="share-note"
                 textValue="Share note"
@@ -264,7 +267,6 @@ export function ProfilePill({
                         key={note._id}
                         note={note}
                         isSelected={noteId === note._id}
-                        onDelete={() => {}}
                       />
                     ))
                   )}
@@ -472,10 +474,12 @@ function NoteItem({
   note,
   isSelected,
   onDelete,
+  canDelete,
 }: {
   note: Doc<"notes">;
   isSelected: boolean;
-  onDelete: () => void;
+  onDelete?: () => void;
+  canDelete?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const [deleteHovered, setDeleteHovered] = useState(false);
@@ -486,13 +490,15 @@ function NoteItem({
       textValue={note.title}
       className="relative overflow-hidden"
     >
-      <motion.div
-        className="absolute inset-0 bg-danger/10"
-        initial={false}
-        animate={{ scaleX: deleteHovered ? 1 : 0 }}
-        style={{ transformOrigin: "right center" }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-      />
+      {canDelete && (
+        <motion.div
+          className="absolute inset-0 bg-danger/10"
+          initial={false}
+          animate={{ scaleX: deleteHovered ? 1 : 0 }}
+          style={{ transformOrigin: "right center" }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+        />
+      )}
       <div
         className="absolute inset-0 flex items-center px-2"
         onMouseEnter={() => setHovered(true)}
@@ -512,12 +518,8 @@ function NoteItem({
         >
           {note.title || "Untitled"}
         </span>
-        <div
-          className="relative ml-auto size-5 shrink-0"
-          onMouseEnter={() => setDeleteHovered(true)}
-          onMouseLeave={() => setDeleteHovered(false)}
-        >
-          {isSelected && (
+        <div className="relative ml-auto size-5 shrink-0">
+          {isSelected && !canDelete && (
             <motion.span
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
               initial={false}
@@ -530,30 +532,53 @@ function NoteItem({
               <Check className="size-3.5 text-muted-foreground" />
             </motion.span>
           )}
-          <motion.button
-            className={[
-              "absolute inset-0 flex items-center justify-center rounded transition-colors duration-200",
-              deleteHovered ? "text-danger" : "text-muted-foreground",
-            ].join(" ")}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onDelete();
-            }}
-            initial={false}
-            animate={{
-              scale: hovered ? 1 : 0,
-              opacity: hovered ? 1 : 0,
-            }}
-            transition={{
-              duration: 0.15,
-              ease: "easeInOut",
-              delay: hovered ? 0.08 : 0,
-            }}
-            aria-label={`Delete ${note.title || "Untitled"}`}
-          >
-            <Trash2 className="size-3" />
-          </motion.button>
+          {canDelete && onDelete && (
+            <>
+              {isSelected && (
+                <motion.span
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  initial={false}
+                  animate={{
+                    scale: hovered ? 0 : 1,
+                    opacity: hovered ? 0 : 1,
+                  }}
+                  transition={{ duration: 0.15, ease: "easeInOut" }}
+                >
+                  <Check className="size-3.5 text-muted-foreground" />
+                </motion.span>
+              )}
+              <div
+                className="absolute inset-0"
+                onMouseEnter={() => setDeleteHovered(true)}
+                onMouseLeave={() => setDeleteHovered(false)}
+              >
+                <motion.button
+                  className={[
+                    "absolute inset-0 flex items-center justify-center rounded transition-colors duration-200",
+                    deleteHovered ? "text-danger" : "text-muted-foreground",
+                  ].join(" ")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onDelete();
+                  }}
+                  initial={false}
+                  animate={{
+                    scale: hovered ? 1 : 0,
+                    opacity: hovered ? 1 : 0,
+                  }}
+                  transition={{
+                    duration: 0.15,
+                    ease: "easeInOut",
+                    delay: hovered ? 0.08 : 0,
+                  }}
+                  aria-label={`Delete ${note.title || "Untitled"}`}
+                >
+                  <Trash2 className="size-3" />
+                </motion.button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </DropdownItem>

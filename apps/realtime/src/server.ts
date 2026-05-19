@@ -193,6 +193,7 @@ io.on("connection", async (socket) => {
     socket.to(`note:${noteId}`).emit("cursor:remote", {
       userId: ctx.userId,
       name: ctx.name,
+      picture: ctx.picture,
       from,
       to,
     });
