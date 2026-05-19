@@ -17,7 +17,7 @@ COPY packages/backend/convex/ packages/backend/convex/
 COPY apps/realtime/package.json apps/realtime/
 COPY apps/realtime/src/ apps/realtime/src/
 
-RUN bun install --frozen-lockfile
+RUN bun install
 
 WORKDIR /app/apps/realtime
 
