@@ -8,6 +8,9 @@ COPY package.json bun.lock turbo.json ./
 
 COPY packages/config/package.json packages/config/
 COPY packages/config/tsconfig.base.json packages/config/
+COPY packages/env/package.json packages/env/
+COPY packages/env/tsconfig.json packages/env/
+COPY packages/env/src/ packages/env/src/
 COPY packages/backend/package.json packages/backend/
 COPY packages/backend/convex/ packages/backend/convex/
 
