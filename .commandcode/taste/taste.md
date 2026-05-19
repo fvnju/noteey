@@ -19,5 +19,8 @@
 # Heroku Deployment
 - Use Procfile for Heroku deployment instead of Docker/container-based approach. Confidence: 0.65
 
+# Docker
+- When running TypeScript servers that use native Node addons (e.g., better-sqlite3) in Docker, ensure the base image includes Node.js — Bun-only images (oven/bun:1-slim) lack Node.js which is needed for native addon compatibility and for tools like npx/tsx. Confidence: 0.60
+
 # UI Components
 See [ui-components/taste.md](ui-components/taste.md)

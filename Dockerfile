@@ -1,8 +1,13 @@
 FROM oven/bun:1-slim
 
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl python3 make g++ && \
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+ENV NODE_ENV=production
 
 COPY package.json bun.lock turbo.json ./
 
@@ -21,8 +26,7 @@ RUN bun install
 
 WORKDIR /app/apps/realtime
 
-ENV NODE_ENV=production
-
 EXPOSE 1235
 
-CMD ["sh", "-c", "exec bun run realtime:start"]
+CMD ["sh", "-c", "exec npx tsx src/server.ts"]
+
