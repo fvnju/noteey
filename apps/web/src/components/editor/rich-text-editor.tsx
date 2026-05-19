@@ -11,6 +11,7 @@ import type { Doc, Id } from "@noteey/backend/convex/_generated/dataModel";
 import { useCollabSocket } from "@/lib/use-collab-socket";
 import { useRemoteCursors } from "@/lib/use-remote-cursors";
 import type { UseCollabSocketReturn } from "@/lib/use-collab-socket";
+import { RemoteCursorsLayer } from "./remote-cursors-layer";
 import "@blocknote/mantine/style.css";
 import "./blocknote-theme.css";
 import { TagInput } from "@/components/tag-input";
@@ -89,7 +90,7 @@ export function RichTextEditor({
     animations: false,
   });
 
-  const { overlayRef } = useRemoteCursors({
+  const { overlayRef, cursors } = useRemoteCursors({
     editor,
     remoteSelections: collab.remoteCursors,
     onCursorChange: collab.sendCursor,
@@ -239,7 +240,9 @@ export function RichTextEditor({
           }}
           className="flex-1 rounded-xl"
         />
-        <div ref={overlayRef} />
+        <div ref={overlayRef}>
+          <RemoteCursorsLayer cursors={cursors} />
+        </div>
       </div>
     </div>
   );
