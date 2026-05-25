@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3001",
-    "build": "next build",
-    "start": "next start"
+    "dev": "doppler run -- next dev --port 3001",
+    "build": "doppler run -- next build",
+    "start": "doppler run -- next start"
   },
   "dependencies": {
     "@blocknote/core": "^0.50.0",

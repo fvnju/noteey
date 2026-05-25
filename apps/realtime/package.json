@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "doppler run -- tsx watch src/server.ts",
     "build": "tsc --noEmit",
-    "start": "tsx src/server.ts",
+    "start": "doppler run -- tsx src/server.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

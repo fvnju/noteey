@@ -5,9 +5,9 @@
   "license": "ISC",
   "author": "",
   "scripts": {
-    "dev": "convex dev",
-    "dev:setup": "convex dev --configure --until-success",
-    "deploy": "convex deploy"
+    "dev": "doppler run -- convex dev",
+    "dev:setup": "doppler run -- convex dev --configure --until-success",
+    "deploy": "doppler run -- convex deploy"
   },
   "dependencies": {
     "convex": "catalog:",
