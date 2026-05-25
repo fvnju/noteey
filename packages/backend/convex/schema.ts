@@ -29,6 +29,9 @@ export default defineSchema({
     noteId: v.id("notes"),
     userId: v.string(),
     role: v.union(v.literal("owner"), v.literal("editor")),
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    picture: v.optional(v.string()),
   })
     .index("by_noteId_and_userId", ["noteId", "userId"])
     .index("by_noteId", ["noteId"])

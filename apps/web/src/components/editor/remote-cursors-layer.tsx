@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LazyMotion, m, domAnimation } from "framer-motion";
 import type { ComputedCursor } from "@/lib/use-remote-cursors";
 
 type RemoteCursorsLayerProps = {
@@ -30,9 +30,10 @@ const FADE_TRANSITION = {
  */
 export function RemoteCursorsLayer({ cursors }: RemoteCursorsLayerProps) {
   return (
+    <LazyMotion features={domAnimation}>
     <AnimatePresence initial={false}>
       {cursors.map((c) => (
-        <motion.div
+        <m.div
           key={c.key}
           initial={{
             opacity: 0,
@@ -65,7 +66,7 @@ export function RemoteCursorsLayer({ cursors }: RemoteCursorsLayerProps) {
           aria-hidden="true"
         >
           {c.collapsed && (
-            <motion.span
+            <m.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -106,10 +107,11 @@ export function RemoteCursorsLayer({ cursors }: RemoteCursorsLayerProps) {
                   {(c.name || "?")[0].toUpperCase()}
                 </span>
               )}
-            </motion.span>
+            </m.span>
           )}
-        </motion.div>
+        </m.div>
       ))}
     </AnimatePresence>
+    </LazyMotion>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Button } from "@heroui/react/button";
 import {
@@ -17,7 +17,7 @@ import { Separator } from "@heroui/react/separator";
 import { Skeleton } from "@heroui/react/skeleton";
 import { TextShimmer } from "@/components/text-shimmer";
 import { AnimatedBackground } from "@/components/animated-background";
-import { motion } from "framer-motion";
+import { motion, type PanInfo } from "framer-motion";
 import {
   Check,
   ChevronDown,
@@ -52,14 +52,38 @@ type ProfilePillProps = {
   onCreateShareCode?: (noteId: string, code: string) => Promise<void>;
 };
 
+const EMPTY_NOTES: Doc<"notes">[] = [];
+
 function generateShareCode(): string {
   return `${Date.now().toString(36).slice(-4)}${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
 }
 
+/**
+ * Calculates the rendered pixel width of the profile pill for a given username.
+ *
+ * Breakdown (px):
+ *   left-pad(8) + avatar(24) + gap(8) + text + gap(8) + chevron(12) + right-pad(8) + border(2)
+ *   = 70 + measured text width
+ *
+ * Capped at the max-w-32 truncation limit (128px of text = ~198px total) to match
+ * the `max-w-32 truncate` on the username span.
+ */
+export function pillWidthFor(name: string): number {
+  if (typeof document === "undefined") return 70; // SSR guard
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return 70;
+  const fontFamily = getComputedStyle(document.body).fontFamily;
+  ctx.font = `12px ${fontFamily}`;
+  // max-w-32 = 8rem = 128px — clamp to match the span's truncation
+  const textWidth = Math.min(ctx.measureText(name).width, 128);
+  return Math.ceil(70 + textWidth);
+}
+
 export function ProfilePill({
-  notes = [],
+  notes = EMPTY_NOTES,
   notesLoading = false,
-  sharedNotes = [],
+  sharedNotes = EMPTY_NOTES,
   sharedNotesLoading = false,
   noteId,
   noteTitle,
@@ -483,24 +507,106 @@ function NoteItem({
 }) {
   const [hovered, setHovered] = useState(false);
   const [deleteHovered, setDeleteHovered] = useState(false);
+  const [swipeOpen, setSwipeOpen] = useState(false);
+  const suppressSelectRef = useRef(false);
+
+  const closeSwipe = useCallback(() => {
+    setSwipeOpen(false);
+    suppressSelectRef.current = false;
+  }, []);
+
+  const handleRowTap = useCallback(() => {
+    if (swipeOpen) {
+      suppressSelectRef.current = true;
+      closeSwipe();
+    }
+  }, [closeSwipe, swipeOpen]);
+
+  const handleDragEnd = useCallback((_: PointerEvent, info: PanInfo) => {
+    const shouldOpen = info.offset.x < -36 || info.velocity.x < -350;
+    const shouldClose = info.offset.x > 20 || info.velocity.x > 350;
+
+    suppressSelectRef.current = Math.abs(info.offset.x) > 8;
+
+    if (shouldOpen) {
+      setSwipeOpen(true);
+      return;
+    }
+
+    if (shouldClose) {
+      setSwipeOpen(false);
+      return;
+    }
+
+    setSwipeOpen((open) => open && info.offset.x < 16);
+  }, []);
+
+  const handleDelete = useCallback(() => {
+    closeSwipe();
+    onDelete?.();
+  }, [closeSwipe, onDelete]);
 
   return (
     <DropdownItem
       id={note._id}
       textValue={note.title}
-      className="relative overflow-hidden"
+      className="relative overflow-hidden touch-pan-y"
+      onClickCapture={(event) => {
+        if (suppressSelectRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressSelectRef.current = false;
+        }
+      }}
     >
       {canDelete && (
-        <motion.div
-          className="absolute inset-0 bg-danger/10"
-          initial={false}
-          animate={{ scaleX: deleteHovered ? 1 : 0 }}
-          style={{ transformOrigin: "right center" }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-        />
+        <>
+          <motion.div
+            className="absolute inset-0 bg-danger/10"
+            initial={false}
+            animate={{ scaleX: deleteHovered || swipeOpen ? 1 : 0 }}
+            style={{ transformOrigin: "right center" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          />
+          {onDelete && (
+            <motion.button
+              type="button"
+              className={[
+                "absolute inset-y-0 right-0 flex w-14 items-center justify-center bg-danger text-danger-foreground",
+                swipeOpen ? "pointer-events-auto" : "pointer-events-none",
+              ].join(" ")}
+              initial={false}
+              animate={{
+                opacity: swipeOpen ? 1 : 0,
+                x: swipeOpen ? 0 : 12,
+              }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleDelete();
+              }}
+              aria-label={`Delete ${note.title || "Untitled"}`}
+            >
+              <Trash2 className="size-3.5" />
+            </motion.button>
+          )}
+        </>
       )}
-      <div
+      <motion.div
         className="absolute inset-0 flex items-center px-2"
+        drag={canDelete && onDelete ? "x" : false}
+        dragConstraints={{ left: -56, right: 0 }}
+        dragElastic={0.04}
+        dragMomentum={false}
+        animate={{ x: swipeOpen ? -56 : 0 }}
+        transition={{ type: "spring", stiffness: 520, damping: 38 }}
+        onDragStart={() => {
+          suppressSelectRef.current = true;
+        }}
+        onDragEnd={handleDragEnd}
+        onTap={handleRowTap}
+        style={{ touchAction: "pan-y" }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
@@ -560,7 +666,7 @@ function NoteItem({
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    onDelete();
+                    handleDelete();
                   }}
                   initial={false}
                   animate={{
@@ -580,7 +686,7 @@ function NoteItem({
             </>
           )}
         </div>
-      </div>
+      </motion.div>
     </DropdownItem>
   );
 }

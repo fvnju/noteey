@@ -5,8 +5,8 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 import { measureNaturalWidth, prepareWithSegments } from "@chenglou/pretext";
 import {
@@ -87,6 +87,56 @@ const getVisibleTagCount = (tagNames: string[], availableWidth: number) => {
   return 0;
 };
 
+type TagInputState = {
+  inputValue: string;
+  selectedKey: Key | null;
+  creating: boolean;
+  containerWidth: number;
+  activeCloseTagId: string | null;
+};
+
+type TagInputAction =
+  | { type: "SET_INPUT"; value: string }
+  | { type: "SELECT_KEY"; key: Key | null }
+  | { type: "CLEAR_INPUT" }
+  | { type: "CREATE_START" }
+  | { type: "CREATE_END" }
+  | { type: "RESIZE"; width: number }
+  | { type: "HOVER_TAG"; tagId: string }
+  | { type: "HOVER_END" };
+
+const initialState: TagInputState = {
+  inputValue: "",
+  selectedKey: null,
+  creating: false,
+  containerWidth: 0,
+  activeCloseTagId: null,
+};
+
+function tagInputReducer(
+  state: TagInputState,
+  action: TagInputAction,
+): TagInputState {
+  switch (action.type) {
+    case "SET_INPUT":
+      return { ...state, inputValue: action.value };
+    case "SELECT_KEY":
+      return { ...state, selectedKey: action.key };
+    case "CLEAR_INPUT":
+      return { ...state, inputValue: "", selectedKey: null };
+    case "CREATE_START":
+      return { ...state, creating: true };
+    case "CREATE_END":
+      return { ...state, creating: false };
+    case "RESIZE":
+      return { ...state, containerWidth: action.width };
+    case "HOVER_TAG":
+      return { ...state, activeCloseTagId: action.tagId };
+    case "HOVER_END":
+      return { ...state, activeCloseTagId: null };
+  }
+}
+
 export function TagInput({
   tags,
   selectedTagIds,
@@ -94,12 +144,9 @@ export function TagInput({
   onRemoveTag,
   onCreateTag,
 }: TagInputProps) {
-  const [inputValue, setInputValue] = useState("");
-  const [selectedAutocompleteKey, setSelectedAutocompleteKey] =
-    useState<Key | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [activeCloseTagId, setActiveCloseTagId] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(tagInputReducer, initialState);
+  const { inputValue, selectedKey, creating, containerWidth, activeCloseTagId } =
+    state;
   const hideCloseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -128,27 +175,25 @@ export function TagInput({
   const handleSelect = useCallback(
     (tagId: Id<"tags">) => {
       onAddTag(tagId);
-      setInputValue("");
-      setSelectedAutocompleteKey(null);
+      dispatch({ type: "CLEAR_INPUT" });
     },
     [onAddTag],
   );
 
   const handleCreate = useCallback(async () => {
     if (!inputValue.trim() || creating) return;
-    setCreating(true);
+    dispatch({ type: "CREATE_START" });
     const id = await onCreateTag(inputValue.trim());
-    setCreating(false);
+    dispatch({ type: "CREATE_END" });
     if (id) {
       onAddTag(id);
-      setInputValue("");
-      setSelectedAutocompleteKey(null);
+      dispatch({ type: "CLEAR_INPUT" });
     }
   }, [inputValue, creating, onCreateTag, onAddTag]);
 
   const handleAutocompleteSelection = useCallback(
     (key: Key | null) => {
-      setSelectedAutocompleteKey(key);
+      dispatch({ type: "SELECT_KEY", key });
       if (key == null) return;
 
       if (key === "__create__") {
@@ -163,13 +208,13 @@ export function TagInput({
 
   const handleCloseVisibilityStart = useCallback((tagId: string) => {
     if (hideCloseTimer.current) clearTimeout(hideCloseTimer.current);
-    setActiveCloseTagId(tagId);
+    dispatch({ type: "HOVER_TAG", tagId });
   }, []);
 
   const handleCloseVisibilityEnd = useCallback(() => {
     if (hideCloseTimer.current) clearTimeout(hideCloseTimer.current);
     hideCloseTimer.current = setTimeout(() => {
-      setActiveCloseTagId(null);
+      dispatch({ type: "HOVER_END" });
     }, 260);
   }, []);
 
@@ -184,7 +229,7 @@ export function TagInput({
     if (!container) return;
 
     const resizeObserver = new ResizeObserver(([entry]) => {
-      setContainerWidth(entry.contentRect.width);
+      dispatch({ type: "RESIZE", width: entry.contentRect.width });
     });
     resizeObserver.observe(container);
 
@@ -216,9 +261,9 @@ export function TagInput({
           className="w-28 shrink-0"
           inputValue={inputValue}
           menuTrigger="focus"
-          selectedKey={selectedAutocompleteKey}
+          selectedKey={selectedKey}
           variant="secondary"
-          onInputChange={setInputValue}
+          onInputChange={(v) => dispatch({ type: "SET_INPUT", value: v })}
           onSelectionChange={handleAutocompleteSelection}
         >
           <ComboBox.InputGroup className="h-8 rounded-none border-0 bg-transparent p-0 shadow-none">

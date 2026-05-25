@@ -145,7 +145,7 @@ export function RichTextEditor({
 
   return (
     <div className="flex-1 bg-background rounded-lg overflow-hidden flex flex-col">
-      <div className="shrink-0 px-13.5 pt-8 pb-4">
+      <div className="shrink-0 px-4 md:px-13.5 pt-8 pb-4">
         <div className="flex items-start gap-3">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
             {!titleEditable && (
@@ -188,7 +188,6 @@ export function RichTextEditor({
               isDisabled={
                 isCommitting ||
                 collab.isCommitting ||
-                !collab.isConnected ||
                 !hasUncommittedChanges
               }
               isPending={isCommitting || collab.isCommitting}

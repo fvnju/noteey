@@ -4,7 +4,9 @@
       "Bash(grep -r --color-accent: /home/fvnju/DEV/noteey/node_modules/.bun/@heroui+styles@3.0.4+33300a306a2a6382/node_modules/@heroui/styles/dist/)",
       "Bash(grep -r --color-accent: /home/fvnju/DEV/noteey/node_modules/.bun/@heroui+styles@3.0.4+33300a306a2a6382/node_modules/@heroui/styles/dist/themes/)",
       "Bash(grep -r export.*Chip /home/fvnju/DEV/noteey/node_modules/.bun/@heroui+react@3.0.4+16db03ad4a2aa6b5/node_modules/@heroui/react/dist/components/chip/)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(bun run:*)",
+      "Bash(bunx tsc:*)"
     ]
   }
 }

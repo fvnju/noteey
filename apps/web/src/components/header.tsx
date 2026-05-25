@@ -1,5 +1,6 @@
 "use client";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import Image from "next/image";
 import Link from "next/link";
 
 import { ModeToggle } from "./mode-toggle";
@@ -26,10 +27,12 @@ export default function Header() {
           ) : user ? (
             <div className="flex items-center gap-3">
               {user.picture && (
-                <img
+                <Image
                   src={user.picture}
                   alt={user.name ?? ""}
-                  className="h-7 w-7 rounded-full"
+                  width={28}
+                  height={28}
+                  className="rounded-full"
                 />
               )}
               <span className="text-sm">{user.name}</span>

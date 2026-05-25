@@ -29,15 +29,16 @@ function avatarSrc(userId: string, picture: string | null): string | undefined {
 
 type ConnectedUsersProps = {
   users: User[];
+  className?: string;
 };
 
-export function ConnectedUsers({ users }: ConnectedUsersProps) {
+export function ConnectedUsers({ users, className }: ConnectedUsersProps) {
   if (users.length === 0) return null;
 
   const max = 4;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex -space-x-2">
+    <div className={className || "fixed bottom-4 right-4 z-50 flex -space-x-2"}>
       {users.slice(0, max).map((u) => (
         <div key={u.userId} className="relative">
           <Avatar size="sm" className={u.online ? "" : "opacity-40 grayscale"}>

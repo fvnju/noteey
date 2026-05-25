@@ -24,3 +24,6 @@
 
 # UI Components
 See [ui-components/taste.md](ui-components/taste.md)
+
+# Backend / Convex
+- When displaying a user's name in Convex backend queries (e.g., shared notes owner), use the same approach as the profile pill component for name/email resolution rather than ad-hoc user ID parsing. Confidence: 0.65

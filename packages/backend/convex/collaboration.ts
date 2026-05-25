@@ -30,6 +30,33 @@ async function getNoteRole(
   return { note, role: collaborator.role };
 }
 
+export const listCollaborators = query({
+  args: {
+    noteId: v.id("notes"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+
+    // Verify the user has access to this note
+    await getNoteRole(ctx, args.noteId, identity.tokenIdentifier);
+
+    const collaborators = await ctx.db
+      .query("noteCollaborators")
+      .withIndex("by_noteId", (q) => q.eq("noteId", args.noteId))
+      .take(100);
+
+    // Exclude the current user — only return other contributors
+    return collaborators
+      .filter((c) => c.userId !== identity.tokenIdentifier)
+      .map((c) => ({
+        userId: c.userId,
+        name: c.name ?? null,
+        picture: c.picture ?? null,
+        role: c.role,
+      }));
+  },
+});
+
 export const authenticateRoom = query({
   args: {
     noteId: v.id("notes"),
@@ -125,6 +152,9 @@ export const addEditor = mutation({
       return existing._id;
     }
 
+    // We don't have the editor's identity here, so store minimal info.
+    // The editor's name/picture will be populated when they redeem a share code
+    // or if the realtime server provides it.
     return ctx.db.insert("noteCollaborators", {
       noteId: args.noteId,
       userId: args.editorUserId,
@@ -195,6 +225,9 @@ export const redeemShareCode = mutation({
         noteId: shareCode.noteId,
         userId: identity.tokenIdentifier,
         role: "editor",
+        name: identity.name ?? identity.email ?? undefined,
+        email: identity.email ?? undefined,
+        picture: identity.pictureUrl ?? undefined,
       });
     }
 

@@ -112,11 +112,8 @@ export function useRemoteCursors({
   // consumer doesn't have to remember them.
   const overlayRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
-      node.style.position = "absolute";
-      node.style.inset = "0";
-      node.style.pointerEvents = "none";
-      node.style.zIndex = "10";
-      node.style.overflow = "hidden";
+      node.style.cssText =
+        "position:absolute;inset:0;pointer-events:none;z-index:10;overflow:hidden";
     }
     setOverlay(node);
   }, []);

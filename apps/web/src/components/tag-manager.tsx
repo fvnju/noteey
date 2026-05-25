@@ -14,7 +14,7 @@ import {
   toast,
 } from "@heroui/react";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { Check, Plus, Tag, Trash2, X } from "lucide-react";
 import PenIcon from "@noteey/ui/components/pen-icon";
 import type { AnimatedIconHandle } from "@noteey/ui/components/types";
@@ -128,14 +128,8 @@ export function TagManager({
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // TODO: view transition fix
-    try {
-      toast.clear();
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(e.message);
-      }
-    }
+    const raf = requestAnimationFrame(() => toast.clear());
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const handleDialogMouseDown = useCallback((e: React.MouseEvent) => {
@@ -368,6 +362,8 @@ function TagItem({
 }) {
   const [hovered, setHovered] = useState(false);
   const [deleteHovered, setDeleteHovered] = useState(false);
+  const [swipeOpen, setSwipeOpen] = useState(false);
+  const suppressEditRef = useRef(false);
   const penRef = useRef<AnimatedIconHandle>(null);
   const colorTriggerRef = useRef<HTMLButtonElement>(null);
   const { open: overlayOpen, close: overlayClose } = useOverlayContext();
@@ -380,9 +376,53 @@ function TagItem({
     }
   }, [hovered]);
 
+  const closeSwipe = useCallback(() => {
+    setSwipeOpen(false);
+    suppressEditRef.current = false;
+  }, []);
+
+  const handleDragEnd = useCallback((_: PointerEvent, info: PanInfo) => {
+    const shouldOpen = info.offset.x < -36 || info.velocity.x < -350;
+    const shouldClose = info.offset.x > 20 || info.velocity.x > 350;
+
+    suppressEditRef.current = Math.abs(info.offset.x) > 8;
+
+    if (shouldOpen) {
+      setSwipeOpen(true);
+      return;
+    }
+
+    if (shouldClose) {
+      setSwipeOpen(false);
+      return;
+    }
+
+    setSwipeOpen((open) => open && info.offset.x < 16);
+  }, []);
+
+  const handleRowTap = useCallback(() => {
+    if (swipeOpen) {
+      suppressEditRef.current = true;
+      closeSwipe();
+    }
+  }, [closeSwipe, swipeOpen]);
+
+  const handleStartEdit = useCallback(() => {
+    if (suppressEditRef.current) {
+      suppressEditRef.current = false;
+      return;
+    }
+    onStartEdit();
+  }, [onStartEdit]);
+
+  const handleDelete = useCallback(() => {
+    closeSwipe();
+    onDelete();
+  }, [closeSwipe, onDelete]);
+
   return (
     <div
-      className="group relative flex items-center gap-2 rounded-full px-3 py-2.5 overflow-hidden cursor-pointer"
+      className="group relative overflow-hidden rounded-full touch-pan-y"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
@@ -400,139 +440,176 @@ function TagItem({
           <motion.div
             className="absolute inset-0 bg-danger/10"
             initial={false}
-            animate={{ scaleX: deleteHovered ? 1 : 0 }}
+            animate={{ scaleX: deleteHovered || swipeOpen ? 1 : 0 }}
             style={{ transformOrigin: "right center" }}
             transition={{ duration: 0.25, ease: "easeOut" }}
           />
-        </>
-      )}
-      <ColorPicker
-        value={getSliderColor(tag.color)}
-        onChange={(color) => {
-          const nextColor = colorToHslString(color);
-          if (nextColor) void onChangeColor(tag._id, nextColor);
-        }}
-      >
-        <ColorPicker.Trigger ref={colorTriggerRef}>
-          <ColorSwatch
-            className="relative size-3.5 shrink-0 rounded-full cursor-pointer"
-            aria-label={`${tag.name} color`}
-            style={{ backgroundColor: getTagColor(tag.color) }}
-          />
-        </ColorPicker.Trigger>
-        <ColorPicker.Popover
-          placement="left top"
-          className="z-50"
-          onOpenChange={(isOpen) => (isOpen ? overlayOpen() : overlayClose())}
-        >
-          <ColorArea
-            aria-label="Color area"
-            className="max-w-full"
-            colorSpace="hsb"
-            xChannel="saturation"
-            yChannel="brightness"
-          >
-            <ColorArea.Thumb />
-          </ColorArea>
-          <ColorSlider channel="hue" className="gap-1 px-1" colorSpace="hsb">
-            <Label>Hue</Label>
-            <ColorSlider.Output className="text-muted" />
-            <ColorSlider.Track>
-              <ColorSlider.Thumb />
-            </ColorSlider.Track>
-          </ColorSlider>
-          <ColorSelectButton
-            triggerRef={colorTriggerRef}
-            onClose={overlayClose}
-          />
-        </ColorPicker.Popover>
-      </ColorPicker>
-
-      <AnimatePresence mode="wait">
-        {isEditing ? (
-          <motion.div
-            key="edit"
-            className="flex flex-1 items-center"
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -4 }}
-            transition={{ duration: 0.15 }}
-          >
-            <Input
-              value={editName}
-              onChange={(e) => onEditNameChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onSaveEdit();
-                if (e.key === "Escape") onCancelEdit();
-              }}
-              onBlur={onSaveEdit}
-              autoFocus
-              className="h-7 flex-1 rounded-full border border-border bg-background px-2.5 text-sm shadow-none"
-            />
-          </motion.div>
-        ) : (
           <motion.button
-            key="label"
-            onClick={onStartEdit}
-            className="relative flex flex-1 items-center gap-2 rounded h-7 text-left text-sm text-foreground cursor-pointer"
-            initial={{ opacity: 0, x: 4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 4 }}
-            transition={{ duration: 0.15 }}
-          >
-            <span className="flex-1">{tag.name}</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {!isEditing && (
-        <div
-          className="relative size-6 shrink-0"
-          onMouseEnter={() => setDeleteHovered(true)}
-          onMouseLeave={() => setDeleteHovered(false)}
-        >
-          <motion.button
-            className="absolute inset-0 flex items-center justify-center rounded text-muted-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              onStartEdit();
-            }}
-            aria-label={`Edit ${tag.name}`}
+            type="button"
+            className={[
+              "absolute inset-y-0 right-0 flex w-14 items-center justify-center bg-danger text-danger-foreground",
+              swipeOpen ? "pointer-events-auto" : "pointer-events-none",
+            ].join(" ")}
             initial={false}
             animate={{
-              scale: hovered && !deleteHovered ? 1 : 0,
-              opacity: hovered && !deleteHovered ? 1 : 0,
+              opacity: swipeOpen ? 1 : 0,
+              x: swipeOpen ? 0 : 12,
             }}
-            transition={{
-              duration: 0.15,
-              ease: "easeInOut",
-              delay: hovered ? 0.08 : 0,
-            }}
-          >
-            <PenIcon ref={penRef} size={16} strokeWidth={3} />
-          </motion.button>
-          <motion.button
-            className="absolute inset-0 flex items-center justify-center text-danger overflow-hidden cursor-pointer"
+            transition={{ duration: 0.18, ease: "easeOut" }}
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              e.preventDefault();
+              handleDelete();
             }}
             aria-label={`Delete ${tag.name}`}
-            initial={false}
-            animate={{
-              scale: hovered && deleteHovered ? 1 : 0,
-              opacity: hovered && deleteHovered ? 1 : 0,
-            }}
-            transition={{
-              duration: 0.15,
-              ease: "easeInOut",
-              delay: hovered ? 0.08 : 0,
-            }}
           >
             <Trash2 className="size-4" strokeWidth={3} />
           </motion.button>
-        </div>
+        </>
       )}
+      <motion.div
+        className="relative flex items-center gap-2 px-3 py-2.5 cursor-pointer"
+        drag={!isEditing ? "x" : false}
+        dragConstraints={{ left: -56, right: 0 }}
+        dragElastic={0.04}
+        dragMomentum={false}
+        animate={{ x: swipeOpen && !isEditing ? -56 : 0 }}
+        transition={{ type: "spring", stiffness: 520, damping: 38 }}
+        onDragStart={() => {
+          suppressEditRef.current = true;
+        }}
+        onDragEnd={handleDragEnd}
+        onTap={handleRowTap}
+        style={{ touchAction: "pan-y" }}
+      >
+        <ColorPicker
+          value={getSliderColor(tag.color)}
+          onChange={(color) => {
+            const nextColor = colorToHslString(color);
+            if (nextColor) void onChangeColor(tag._id, nextColor);
+          }}
+        >
+          <ColorPicker.Trigger ref={colorTriggerRef}>
+            <ColorSwatch
+              className="relative size-3.5 shrink-0 rounded-full cursor-pointer"
+              aria-label={`${tag.name} color`}
+              style={{ backgroundColor: getTagColor(tag.color) }}
+            />
+          </ColorPicker.Trigger>
+          <ColorPicker.Popover
+            placement="left top"
+            className="z-50"
+            onOpenChange={(isOpen) => (isOpen ? overlayOpen() : overlayClose())}
+          >
+            <ColorArea
+              aria-label="Color area"
+              className="max-w-full"
+              colorSpace="hsb"
+              xChannel="saturation"
+              yChannel="brightness"
+            >
+              <ColorArea.Thumb />
+            </ColorArea>
+            <ColorSlider channel="hue" className="gap-1 px-1" colorSpace="hsb">
+              <Label>Hue</Label>
+              <ColorSlider.Output className="text-muted" />
+              <ColorSlider.Track>
+                <ColorSlider.Thumb />
+              </ColorSlider.Track>
+            </ColorSlider>
+            <ColorSelectButton
+              triggerRef={colorTriggerRef}
+              onClose={overlayClose}
+            />
+          </ColorPicker.Popover>
+        </ColorPicker>
+
+        <AnimatePresence mode="wait">
+          {isEditing ? (
+            <motion.div
+              key="edit"
+              className="flex flex-1 items-center"
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Input
+                value={editName}
+                onChange={(e) => onEditNameChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onSaveEdit();
+                  if (e.key === "Escape") onCancelEdit();
+                }}
+                onBlur={onSaveEdit}
+                autoFocus
+                className="h-7 flex-1 rounded-full border border-border bg-background px-2.5 text-sm shadow-none"
+              />
+            </motion.div>
+          ) : (
+            <motion.button
+              key="label"
+              onClick={handleStartEdit}
+              className="relative flex flex-1 items-center gap-2 rounded h-7 text-left text-sm text-foreground cursor-pointer"
+              initial={{ opacity: 0, x: 4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 4 }}
+              transition={{ duration: 0.15 }}
+            >
+              <span className="flex-1">{tag.name}</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        {!isEditing && (
+          <div
+            className="relative size-6 shrink-0"
+            onMouseEnter={() => setDeleteHovered(true)}
+            onMouseLeave={() => setDeleteHovered(false)}
+          >
+            <motion.button
+              className="absolute inset-0 flex items-center justify-center rounded text-muted-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStartEdit();
+              }}
+              aria-label={`Edit ${tag.name}`}
+              initial={false}
+              animate={{
+                scale: hovered && !deleteHovered ? 1 : 0,
+                opacity: hovered && !deleteHovered ? 1 : 0,
+              }}
+              transition={{
+                duration: 0.15,
+                ease: "easeInOut",
+                delay: hovered ? 0.08 : 0,
+              }}
+            >
+              <PenIcon ref={penRef} size={16} strokeWidth={3} />
+            </motion.button>
+            <motion.button
+              className="absolute inset-0 flex items-center justify-center text-danger overflow-hidden cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              aria-label={`Delete ${tag.name}`}
+              initial={false}
+              animate={{
+                scale: hovered && deleteHovered ? 1 : 0,
+                opacity: hovered && deleteHovered ? 1 : 0,
+              }}
+              transition={{
+                duration: 0.15,
+                ease: "easeInOut",
+                delay: hovered ? 0.08 : 0,
+              }}
+            >
+              <Trash2 className="size-4" strokeWidth={3} />
+            </motion.button>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { Search } from "lucide-react";
 import dynamic from "next/dynamic";
 import type { PartialBlock } from "@blocknote/core";
 import { useMutation, useQuery } from "convex/react";
@@ -9,7 +11,7 @@ import { env } from "@noteey/env/web";
 import { api } from "@noteey/backend/convex/_generated/api";
 import type { Id } from "@noteey/backend/convex/_generated/dataModel";
 
-import { CommandPalette } from "@/components/command-palette";
+import { CommandPalette, CMDK_SPRING } from "@/components/command-palette";
 import { NoteSkeleton } from "@/components/editor/note-skeleton";
 import { ProfilePill } from "@/components/profile-pill";
 import { ConnectedUsers } from "@/components/connected-users";
@@ -64,12 +66,45 @@ export default function AppPage() {
   >("loading");
   const [hasUncommittedChanges, setHasUncommittedChanges] = useState(false);
   const [, setIsNewNote] = useState(false);
+  const [cmdkOpen, setCmdkOpen] = useState(false);
+
+  const noteCollaborators = useQuery(
+    api.collaboration.listCollaborators,
+    noteId ? { noteId: noteId as Id<"notes"> } : "skip",
+  );
 
   const collab = useCollabSocket({
     noteId,
     token: collaborationToken === "loading" ? null : collaborationToken,
     realtimeUrl: env.NEXT_PUBLIC_REALTIME_URL ?? "ws://localhost:1235",
   });
+
+  // Merge persisted collaborators with live online status from the collab socket.
+  const allContributors = useMemo(() => {
+    if (!noteCollaborators) return collab.users;
+
+    const onlineMap = new Map(collab.users.map((u) => [u.userId, u.online]));
+    const seen = new Set<string>();
+
+    const merged = noteCollaborators.map((c) => {
+      seen.add(c.userId);
+      return {
+        userId: c.userId,
+        name: c.name ?? "Collaborator",
+        picture: c.picture,
+        online: onlineMap.get(c.userId) ?? false,
+      };
+    });
+
+    // Include any live users not yet in the persisted list
+    for (const u of collab.users) {
+      if (!seen.has(u.userId)) {
+        merged.push(u);
+      }
+    }
+
+    return merged;
+  }, [noteCollaborators, collab.users]);
 
   const initialized = useRef(false);
   const intendedNoteId = useRef<string | null>(null);
@@ -327,15 +362,46 @@ export default function AppPage() {
 
   const handleCommitSnapshot = useCallback(async () => {
     if (!noteId) return;
+
     const content = JSON.stringify(blocks);
-    await updateNote({ id: noteId as never, content });
+    let committed = false;
+
+    if (collab.isConnected) {
+      const result = await collab.requestCommit();
+      if (result.ok) {
+        committed = true;
+      } else {
+        const fallbackSafeErrors = new Set([
+          "Not connected",
+          "No response",
+          "Nothing to commit",
+        ]);
+        if (!fallbackSafeErrors.has(result.error ?? "")) {
+          toast.error(result.error ?? "Failed to commit changes");
+          return;
+        }
+      }
+    }
+
+    if (!committed) {
+      try {
+        await updateNote({ id: noteId as never, content });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to commit changes",
+        );
+        return;
+      }
+    }
+
     lastAcknowledged.current = {
       title,
       content,
       tagIds: lastAcknowledged.current?.tagIds ?? selectedTagIds,
     };
     setHasUncommittedChanges(false);
-  }, [noteId, blocks, title, selectedTagIds, updateNote]);
+    toast.success("Changes committed");
+  }, [noteId, blocks, title, selectedTagIds, collab, updateNote]);
 
   const handleShareNote = useCallback(
     async (targetNoteId: string, editorUserId: string) => {
@@ -474,7 +540,7 @@ export default function AppPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background h-dvh overflow-y-scroll overflow-x-clip">
-      <div className="flex-1 flex flex-col p-6 max-w-4xl w-full mx-auto">
+      <div className="flex-1 flex flex-col p-6 pb-32 max-w-4xl w-full mx-auto">
         {editorKey ? (
           <RichTextEditor
             key={editorKey}
@@ -508,24 +574,90 @@ export default function AppPage() {
           <NoteSkeleton />
         )}
       </div>
-      <div className="fixed bottom-4 left-4 z-50">
-        <ProfilePill
-          notes={notes ?? []}
-          notesLoading={notes === undefined}
-          sharedNotes={sharedNotes ?? []}
-          sharedNotesLoading={sharedNotes === undefined}
-          noteId={noteId}
-          noteTitle={title}
-          isOwner={isOwner}
-          onSelectNoteAction={handleSelectNote}
-          onCreateNote={handleCreateNote}
-          onDeleteNote={handleDeleteNote}
-          onShareNote={handleShareNote}
-          onCreateShareCode={handleCreateShareCode}
+
+      {/* Progressive blur overlay */}
+      <div
+        aria-hidden
+        className="fixed bottom-0 inset-x-0 h-28 pointer-events-none z-40"
+        style={{
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          maskImage: "linear-gradient(to top, black 45%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to top, black 45%, transparent 100%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="fixed bottom-0 inset-x-0 h-28 pointer-events-none z-40 bg-gradient-to-t from-background/70 to-transparent"
+      />
+
+      {/* LayoutGroup coordinates the layoutId morph between the trigger pill
+          (inside the flex bar) and the expanded dialog (inside CommandPalette)
+          so framer-motion treats them as one continuous animation. */}
+      <LayoutGroup id="cmdk-morph">
+        {/* Flex bar — pill and avatar take natural width, center section
+            expands to fill the rest so justify-center places the search
+            equidistant from both sides regardless of their different sizes. */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 340, damping: 34 }}
+          className="fixed bottom-4 inset-x-4 z-50 flex items-center"
+        >
+          {/* Left — profile pill */}
+          <ProfilePill
+            notes={notes ?? []}
+            notesLoading={notes === undefined}
+            sharedNotes={sharedNotes ?? []}
+            sharedNotesLoading={sharedNotes === undefined}
+            noteId={noteId}
+            noteTitle={title}
+            isOwner={isOwner}
+            onSelectNoteAction={handleSelectNote}
+            onCreateNote={handleCreateNote}
+            onDeleteNote={handleDeleteNote}
+            onShareNote={handleShareNote}
+            onCreateShareCode={handleCreateShareCode}
+          />
+
+          {/* Centre — grows to fill remaining space, centers the trigger */}
+          <div className="flex flex-1 justify-center">
+            <AnimatePresence initial={false}>
+              {!cmdkOpen && (
+                <motion.button
+                  key="cmdk-trigger"
+                  layoutId="cmdk-shell"
+                  onClick={() => setCmdkOpen(true)}
+                  aria-label="Open command palette (⌘K)"
+                  className="flex h-8 items-center gap-2 border border-border bg-surface px-3.5 text-xs text-muted-foreground shadow-sm transition-colors hover:bg-muted/50 hover:text-foreground"
+                  style={{ borderRadius: 9999 }}
+                  transition={CMDK_SPRING}
+                >
+                  <Search className="size-3 shrink-0" />
+                  <span>Search…</span>
+                  <kbd className="ml-0.5 rounded border border-border/60 px-1 py-0.5 font-mono text-[10px] leading-none">
+                    ⌘K
+                  </kbd>
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Right — connected users */}
+          <ConnectedUsers
+            users={allContributors}
+            className="flex -space-x-2"
+          />
+        </motion.div>
+
+        {/* Command palette dialog + backdrop (trigger lives in the flex bar above) */}
+        <CommandPalette
+          isOpen={cmdkOpen}
+          onOpen={() => setCmdkOpen(true)}
+          onClose={() => setCmdkOpen(false)}
+          onSelectNote={handleSelectNote}
         />
-      </div>
-      <ConnectedUsers users={collab.users} />
-      <CommandPalette />
+      </LayoutGroup>
     </div>
   );
 }

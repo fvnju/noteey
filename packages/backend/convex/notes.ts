@@ -30,6 +30,19 @@ async function attachUserTagIds(
   );
 }
 
+async function attachUserTagIdsWithOwner(
+  ctx: QueryCtx,
+  userId: string,
+  notes: (Doc<"notes"> & { ownerName?: string })[],
+): Promise<(Doc<"notes"> & { tagIds: Id<"tags">[]; ownerName?: string })[]> {
+  return Promise.all(
+    notes.map(async (note) => ({
+      ...note,
+      tagIds: await userTagIdsForNote(ctx, userId, note._id),
+    })),
+  );
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -61,17 +74,26 @@ export const listSharedWithMe = query({
       )
       .take(100);
 
-    const notes: Doc<"notes">[] = [];
+    const notesWithOwner: (Doc<"notes"> & { ownerName?: string })[] = [];
     for (const collab of collaborations) {
       const note = await ctx.db.get(collab.noteId);
       if (note && note.userId !== identity.tokenIdentifier) {
-        notes.push(note);
+        const ownerCollab = await ctx.db
+          .query("noteCollaborators")
+          .withIndex("by_noteId_and_userId", (q) =>
+            q.eq("noteId", note._id).eq("userId", note.userId),
+          )
+          .unique();
+        notesWithOwner.push({
+          ...note,
+          ownerName: ownerCollab?.name ?? ownerCollab?.email ?? "Collaborator",
+        });
       }
     }
 
-    notes.sort((a, b) => b._creationTime - a._creationTime);
+    notesWithOwner.sort((a, b) => b._creationTime - a._creationTime);
 
-    return attachUserTagIds(ctx, identity.tokenIdentifier, notes);
+    return attachUserTagIdsWithOwner(ctx, identity.tokenIdentifier, notesWithOwner);
   },
 });
 
@@ -95,6 +117,9 @@ export const create = mutation({
       noteId,
       userId: identity.tokenIdentifier,
       role: "owner",
+      name: identity.name ?? identity.email ?? undefined,
+      email: identity.email ?? undefined,
+      picture: identity.pictureUrl ?? undefined,
     });
 
     if (args.tagIds && args.tagIds.length > 0) {
