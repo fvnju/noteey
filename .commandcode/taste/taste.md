@@ -1,6 +1,7 @@
 # Taste (Continuously Learned by [CommandCode][cmd])
 
 [cmd]: https://commandcode.ai/
+
 
 # Rich Text Editing
 - For /app: Use BlockNote for the rich text editor. Confidence: 0.50

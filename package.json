@@ -27,7 +27,7 @@
     "build": "turbo build",
     "check-types": "turbo check-types",
     "dev:web": "turbo -F web dev",
-    "dev:realtime": "turbo -F realtime dev",
+    "dev:realtime": "doppler run -- turbo -F realtime dev",
     "dev:server": "turbo -F @noteey/backend dev",
     "dev:setup": "turbo -F @noteey/backend dev:setup",
     "realtime:start": "turbo -F realtime start",
