@@ -108,11 +108,20 @@ export class RealtimeAITransport<UI_MESSAGE extends UIMessage> extends DefaultCh
       throw new Error("Missing authentication token for AI request");
     }
 
+    const explicitNoteId = this.getNoteId?.() ?? null;
     const messageNoteId = (messages[0] as unknown as Record<string, unknown> | undefined)?.noteId;
+    const urlNoteId = new URLSearchParams(window.location.search).get("noteId");
     const noteId =
+      explicitNoteId ??
       (typeof messageNoteId === "string" ? messageNoteId : null) ??
-      this.getNoteId?.() ??
-      new URLSearchParams(window.location.search).get("noteId");
+      urlNoteId;
+    const noteIdSource = explicitNoteId
+      ? "editor"
+      : typeof messageNoteId === "string"
+        ? "message"
+        : urlNoteId
+          ? "url"
+          : "missing";
 
     if (!noteId) {
       console.error("[ai-transport] Missing noteId for AI request", {
@@ -126,6 +135,7 @@ export class RealtimeAITransport<UI_MESSAGE extends UIMessage> extends DefaultCh
       console.error("[ai-transport] Missing prompt for AI request", {
         baseUrl: this.baseUrl,
         noteId,
+        noteIdSource,
       });
       throw new Error("Missing prompt for AI request");
     }
@@ -133,6 +143,7 @@ export class RealtimeAITransport<UI_MESSAGE extends UIMessage> extends DefaultCh
     console.info("[ai-transport] POST /ai", {
       url: `${this.baseUrl}/ai`,
       noteId,
+      noteIdSource,
       promptLength: userPrompt.length,
       hasToken: true,
     });
@@ -152,6 +163,7 @@ export class RealtimeAITransport<UI_MESSAGE extends UIMessage> extends DefaultCh
       console.error("[ai-transport] AI request failed", {
         url: `${this.baseUrl}/ai`,
         noteId,
+        noteIdSource,
         status: response.status,
         errorText,
       });
@@ -163,6 +175,7 @@ export class RealtimeAITransport<UI_MESSAGE extends UIMessage> extends DefaultCh
     console.info("[ai-transport] AI stream connected", {
       url: `${this.baseUrl}/ai`,
       noteId,
+      noteIdSource,
       status: response.status,
       contentType: response.headers.get("content-type"),
     });
