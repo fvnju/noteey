@@ -3,7 +3,6 @@
 import { Auth0Provider } from "@auth0/nextjs-auth0/client";
 import { env } from "@noteey/env/web";
 import { ToastProvider } from "@heroui/react";
-import { Toaster } from "@noteey/ui/components/sonner";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 
 import { useAuth0ForConvex } from "@/lib/use-auth0-for-convex";
@@ -31,7 +30,6 @@ export default function Providers({
         </ConvexProviderWithAuth>
       </Auth0Provider>
       <ToastProvider placement="top" maxVisibleToasts={3} />
-      <Toaster richColors />
     </ThemeProvider>
   );
 }

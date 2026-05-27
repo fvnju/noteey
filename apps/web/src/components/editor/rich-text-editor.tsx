@@ -1,17 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import {
+  SuggestionMenuController,
+  getDefaultReactSlashMenuItems,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { Button, Spinner } from "@heroui/react";
 import type { PartialBlock } from "@blocknote/core";
+import { filterSuggestionItems } from "@blocknote/core/extensions";
+import { en as blockNoteEn } from "@blocknote/core/locales";
 import { Lock } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { Doc, Id } from "@noteey/backend/convex/_generated/dataModel";
 import { useCollabSocket } from "@/lib/use-collab-socket";
 import { useRemoteCursors } from "@/lib/use-remote-cursors";
 import type { UseCollabSocketReturn } from "@/lib/use-collab-socket";
+import {
+  AIExtension,
+  AIMenuController,
+  getAISlashMenuItems,
+} from "@blocknote/xl-ai";
+import { en as aiEn } from "@blocknote/xl-ai/locales";
+import { RealtimeAITransport, setCurrentAIToken } from "@/lib/ai-transport";
+import { FormattingToolbar } from "@/components/formatting-toolbar";
 import { RemoteCursorsLayer } from "./remote-cursors-layer";
+import "@blocknote/xl-ai/style.css";
 import "@blocknote/mantine/style.css";
 import "./blocknote-theme.css";
 import { TagInput } from "@/components/tag-input";
@@ -74,6 +89,35 @@ export function RichTextEditor({
   const titleRef = useRef<HTMLInputElement>(null);
   const remoteUpdateRef = useRef(false);
 
+  useEffect(() => {
+    setCurrentAIToken(
+      typeof collaborationToken === "string" ? collaborationToken : null,
+    );
+  }, [collaborationToken]);
+
+  const latestTokenRef = useRef(collaborationToken);
+  useEffect(() => {
+    latestTokenRef.current = collaborationToken;
+  }, [collaborationToken]);
+
+  const latestNoteIdRef = useRef(noteId);
+  useEffect(() => {
+    latestNoteIdRef.current = noteId;
+  }, [noteId]);
+
+  const aiTransport = useMemo(
+    () =>
+      new RealtimeAITransport({
+        realtimeUrl,
+        getToken: () =>
+          typeof latestTokenRef.current === "string"
+            ? latestTokenRef.current
+            : null,
+        getNoteId: () => latestNoteIdRef.current ?? null,
+      }),
+    [realtimeUrl],
+  );
+
   const _internalCollab = useCollabSocket({
     noteId: noteId ?? null,
     token: collaborationToken ?? null,
@@ -84,10 +128,20 @@ export function RichTextEditor({
   const editor = useCreateBlockNote({
     initialContent:
       content && content.length > 0 ? content : [{ type: "paragraph" }],
-    placeholders: {
-      default: placeholder,
+    dictionary: {
+      ...blockNoteEn,
+      ai: aiEn,
+      placeholders: {
+        ...blockNoteEn.placeholders,
+        default: placeholder,
+      },
     },
     animations: false,
+    extensions: [
+      AIExtension({
+        transport: aiTransport,
+      }),
+    ],
   });
 
   const { overlayRef, cursors } = useRemoteCursors({
@@ -95,6 +149,15 @@ export function RichTextEditor({
     remoteSelections: collab.remoteCursors,
     onCursorChange: collab.sendCursor,
   });
+
+  const getSlashMenuItems = useCallback(
+    async (query: string) =>
+      filterSuggestionItems(
+        [...getAISlashMenuItems(editor), ...getDefaultReactSlashMenuItems(editor)],
+        query,
+      ),
+    [editor],
+  );
 
   useEffect(() => {
     return collab.onRemoteDocUpdate((remoteContent: string) => {
@@ -229,6 +292,8 @@ export function RichTextEditor({
         <BlockNoteView
           editor={editor}
           theme={resolvedTheme === "dark" ? "dark" : "light"}
+          formattingToolbar={false}
+          slashMenu={false}
           onChange={() => {
             if (remoteUpdateRef.current) {
               remoteUpdateRef.current = false;
@@ -238,7 +303,14 @@ export function RichTextEditor({
             collab.sendDocUpdate(JSON.stringify(editor.document));
           }}
           className="flex-1 rounded-xl"
-        />
+        >
+          <AIMenuController />
+          <FormattingToolbar />
+          <SuggestionMenuController
+            triggerCharacter="/"
+            getItems={getSlashMenuItems}
+          />
+        </BlockNoteView>
         <div ref={overlayRef}>
           <RemoteCursorsLayer cursors={cursors} />
         </div>

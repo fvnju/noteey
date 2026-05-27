@@ -13,10 +13,11 @@ import type { Id } from "@noteey/backend/convex/_generated/dataModel";
 
 import { CommandPalette, CMDK_SPRING } from "@/components/command-palette";
 import { NoteSkeleton } from "@/components/editor/note-skeleton";
+import { AidisclosureModal } from "@/components/editor/ai-disclosure-modal";
 import { ProfilePill } from "@/components/profile-pill";
 import { ConnectedUsers } from "@/components/connected-users";
 import { useCollabSocket } from "@/lib/use-collab-socket";
-import { toast } from "sonner";
+import { toast } from "@heroui/react";
 
 const RichTextEditor = dynamic(
   () =>
@@ -73,10 +74,14 @@ export default function AppPage() {
     noteId ? { noteId: noteId as Id<"notes"> } : "skip",
   );
 
+  const realtimeUrl = env.NEXT_PUBLIC_REALTIME_URL ?? "ws://localhost:1235";
+  const resolvedCollaborationToken =
+    collaborationToken === "loading" ? null : collaborationToken;
+
   const collab = useCollabSocket({
     noteId,
-    token: collaborationToken === "loading" ? null : collaborationToken,
-    realtimeUrl: env.NEXT_PUBLIC_REALTIME_URL ?? "ws://localhost:1235",
+    token: resolvedCollaborationToken,
+    realtimeUrl,
   });
 
   // Merge persisted collaborators with live online status from the collab socket.
@@ -377,7 +382,7 @@ export default function AppPage() {
           "Nothing to commit",
         ]);
         if (!fallbackSafeErrors.has(result.error ?? "")) {
-          toast.error(result.error ?? "Failed to commit changes");
+          toast.danger(result.error ?? "Failed to commit changes");
           return;
         }
       }
@@ -387,7 +392,7 @@ export default function AppPage() {
       try {
         await updateNote({ id: noteId as never, content });
       } catch (error) {
-        toast.error(
+        toast.danger(
           error instanceof Error ? error.message : "Failed to commit changes",
         );
         return;
@@ -448,7 +453,7 @@ export default function AppPage() {
         }
       })
       .catch((err: Error) => {
-        toast.error(err.message || "Failed to redeem share code");
+        toast.danger(err.message || "Failed to redeem share code");
       });
   }, [user, redeemShareCode]);
 
@@ -466,7 +471,7 @@ export default function AppPage() {
         if (lastAcknowledged.current) {
           lastAcknowledged.current.tagIds = selectedTagIds;
         }
-        toast.error(err instanceof Error ? err.message : "Failed to add tag");
+        toast.danger(err instanceof Error ? err.message : "Failed to add tag");
       }
     },
     [noteId, selectedTagIds, assignTag],
@@ -485,7 +490,7 @@ export default function AppPage() {
         if (lastAcknowledged.current) {
           lastAcknowledged.current.tagIds = selectedTagIds;
         }
-        toast.error(err instanceof Error ? err.message : "Failed to remove tag");
+        toast.danger(err instanceof Error ? err.message : "Failed to remove tag");
       }
     },
     [noteId, selectedTagIds, unassignTag],
@@ -549,6 +554,8 @@ export default function AppPage() {
               name: user?.name ?? undefined,
               email: user?.email ?? undefined,
             }}
+            collaborationToken={resolvedCollaborationToken}
+            realtimeUrl={realtimeUrl}
             content={blocks}
             onChange={handleBlocksChange}
             hasUncommittedChanges={hasUncommittedChanges}
@@ -657,6 +664,7 @@ export default function AppPage() {
           onClose={() => setCmdkOpen(false)}
           onSelectNote={handleSelectNote}
         />
+        <AidisclosureModal />
       </LayoutGroup>
     </div>
   );

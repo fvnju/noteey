@@ -5,12 +5,16 @@
   "scripts": {
     "dev": "doppler run -- next dev --port 3001",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@blocknote/core": "^0.50.0",
-    "@blocknote/mantine": "^0.50.0",
-    "@blocknote/react": "^0.50.0",
+    "@ai-sdk/openai": "^3.0.65",
+    "@blocknote/core": "0.51.3",
+    "@blocknote/mantine": "0.51.3",
+    "@blocknote/react": "0.51.3",
+    "@blocknote/xl-ai": "^0.51.3",
+    "@heroui/react": "^3.1.0",
     "@noteey/backend": "workspace:*",
     "@noteey/env": "workspace:*",
     "@noteey/ui": "workspace:*",
@@ -21,6 +25,7 @@
     "@tiptap/react": "^3.23.1",
     "@tiptap/starter-kit": "^3.23.1",
     "@tiptap/suggestion": "^3.23.1",
+    "ai": "^6.0.191",
     "babel-plugin-react-compiler": "^1.0.0",
     "cmdk": "^1.1.1",
     "convex": "catalog:",

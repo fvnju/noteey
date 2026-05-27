@@ -10,9 +10,12 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@blocknote/core": "^0.50.0",
+    "@ai-sdk/openai": "^3.0.65",
+    "@blocknote/core": "0.51.3",
+    "@blocknote/xl-ai": "0.51.3",
     "@noteey/backend": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
+    "ai": "^6.0.191",
     "better-sqlite3": "^12.10.0",
     "convex": "catalog:",
     "dotenv": "catalog:",

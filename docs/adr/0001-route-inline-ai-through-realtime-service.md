@@ -1,0 +1,3 @@
+# Route inline AI through the realtime service
+
+Inline AI Editing will be served by an authenticated HTTP streaming endpoint on `apps/realtime`, rather than by a Next.js API route, Convex action, browser-direct provider call, or Socket.IO room event. This keeps provider keys server-side and colocates live editor-adjacent capabilities with the realtime deployment, while deliberately keeping AI request/response streaming separate from collaboration and presence events so generated text does not become implicit shared room state. The endpoint will expose an AI SDK-compatible text stream using the AI SDK with an OpenAI provider first.

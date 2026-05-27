@@ -33,7 +33,7 @@ import {
   Users,
 } from "lucide-react";
 import { Input, Modal, useOverlayState } from "@heroui/react";
-import { toast } from "sonner";
+import { toast } from "@heroui/react";
 import { useTheme } from "next-themes";
 import type { Doc } from "@noteey/backend/convex/_generated/dataModel";
 
@@ -404,7 +404,7 @@ export function ProfilePill({
                             shareState.close();
                             setShareUserId("");
                           } catch (error) {
-                            toast.error(
+                            toast.danger(
                               error instanceof Error
                                 ? error.message
                                 : "Failed to share note",

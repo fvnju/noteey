@@ -10,6 +10,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Shared UI package** - shadcn/ui primitives live in `packages/ui`
 - **Convex** - Reactive backend-as-a-service platform
 - **Turborepo** - Optimized monorepo build system
+- **Inline AI editing** - BlockNote-based AI writing assistance served through the realtime service
 
 ## Getting Started
 
@@ -30,6 +31,13 @@ bun run dev:setup
 Follow the prompts to create a new Convex project and connect it to your application.
 
 Copy environment variables from `packages/backend/.env.local` to `apps/*/.env`.
+
+For Inline AI Editing, also set these variables for the realtime service:
+
+- `OPENAI_API_KEY` (or set `AI_API_KEY`)
+- `AI_BASE_URL` (optional; use this for OpenAI-compatible providers)
+- `AI_MODEL` (optional, defaults to `gpt-4o-mini`)
+- `AI_RATE_LIMIT_MAX_REQUESTS` (optional, defaults to `20` per hour per user)
 
 Then, run the development server:
 
