@@ -37,7 +37,12 @@ type CommandPaletteProps = {
   onSelectNote?: (id: string) => void;
 };
 
-export function CommandPalette({ isOpen, onOpen, onClose, onSelectNote }: CommandPaletteProps) {
+export function CommandPalette({
+  isOpen,
+  onOpen,
+  onClose,
+  onSelectNote,
+}: CommandPaletteProps) {
   const { setTheme, theme } = useTheme();
   const { user } = useUser();
   const notes = useQuery(api.notes.list);
@@ -91,7 +96,7 @@ export function CommandPalette({ isOpen, onOpen, onClose, onSelectNote }: Comman
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[48] bg-black/15"
+            className="fixed inset-0 z-48 bg-black/15"
             onClick={onClose}
           />
         )}
@@ -103,7 +108,7 @@ export function CommandPalette({ isOpen, onOpen, onClose, onSelectNote }: Comman
           <motion.div
             key="cmdk-dialog"
             layoutId="cmdk-shell"
-            className="fixed bottom-4 left-0 right-0 mx-auto z-[51] w-[min(calc(100vw-2rem),24rem)] overflow-hidden border border-border bg-surface shadow-2xl"
+            className="fixed bottom-1/2 left-0 right-0 translate-y-1/2 mx-auto z-51 w-[min(calc(100vw-2rem),24rem)] overflow-hidden border border-border bg-surface shadow-2xl"
             style={{ borderRadius: 16 }}
             transition={CMDK_SPRING}
           >
@@ -136,21 +141,27 @@ export function CommandPalette({ isOpen, onOpen, onClose, onSelectNote }: Comman
                 </Command.Empty>
 
                 <Command.Group heading="Theme" className={GROUP_CLASS}>
-                  <PaletteItem onSelect={() => runCommand(() => setTheme("light"))}>
+                  <PaletteItem
+                    onSelect={() => runCommand(() => setTheme("light"))}
+                  >
                     <Sun className="mr-2 size-4" />
                     Light
                     {theme === "light" && (
                       <Check className="ml-auto size-4 text-muted-foreground" />
                     )}
                   </PaletteItem>
-                  <PaletteItem onSelect={() => runCommand(() => setTheme("dark"))}>
+                  <PaletteItem
+                    onSelect={() => runCommand(() => setTheme("dark"))}
+                  >
                     <Moon className="mr-2 size-4" />
                     Dark
                     {theme === "dark" && (
                       <Check className="ml-auto size-4 text-muted-foreground" />
                     )}
                   </PaletteItem>
-                  <PaletteItem onSelect={() => runCommand(() => setTheme("system"))}>
+                  <PaletteItem
+                    onSelect={() => runCommand(() => setTheme("system"))}
+                  >
                     <Monitor className="mr-2 size-4" />
                     System
                     {theme === "system" && (
@@ -179,7 +190,9 @@ export function CommandPalette({ isOpen, onOpen, onClose, onSelectNote }: Comman
                             }}
                           >
                             <FileText className="mr-2 size-4 shrink-0" />
-                            <span className="min-w-0 truncate">{note.title}</span>
+                            <span className="min-w-0 truncate">
+                              {note.title}
+                            </span>
                             {noteTagNames.length > 0 && (
                               <span className="ml-auto flex shrink-0 items-center gap-1 pl-2">
                                 <Tag className="size-3 text-muted-foreground" />
@@ -198,7 +211,10 @@ export function CommandPalette({ isOpen, onOpen, onClose, onSelectNote }: Comman
 
                 {sharedNotes && sharedNotes.length > 0 && (
                   <>
-                    <Command.Group heading="Shared with Me" className={GROUP_CLASS}>
+                    <Command.Group
+                      heading="Shared with Me"
+                      className={GROUP_CLASS}
+                    >
                       {sharedNotes.map((note) => {
                         const noteTagNames = (note.tagIds ?? [])
                           .map((id) => tagNameById.get(id))

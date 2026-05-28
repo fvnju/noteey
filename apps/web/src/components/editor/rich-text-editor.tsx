@@ -6,8 +6,9 @@ import {
   SuggestionMenuController,
   getDefaultReactSlashMenuItems,
   useCreateBlockNote,
+  FormattingToolbarController,
 } from "@blocknote/react";
-import { Button, Spinner } from "@heroui/react";
+import { Button, cn, Spinner } from "@heroui/react";
 import type { PartialBlock } from "@blocknote/core";
 import { filterSuggestionItems } from "@blocknote/core/extensions";
 import { en as blockNoteEn } from "@blocknote/core/locales";
@@ -21,6 +22,7 @@ import {
   AIExtension,
   AIMenuController,
   getAISlashMenuItems,
+  AIToolbarButton,
 } from "@blocknote/xl-ai";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
 import { RealtimeAITransport, setCurrentAIToken } from "@/lib/ai-transport";
@@ -153,7 +155,10 @@ export function RichTextEditor({
   const getSlashMenuItems = useCallback(
     async (query: string) =>
       filterSuggestionItems(
-        [...getAISlashMenuItems(editor), ...getDefaultReactSlashMenuItems(editor)],
+        [
+          ...getAISlashMenuItems(editor),
+          ...getDefaultReactSlashMenuItems(editor),
+        ],
         query,
       ),
     [editor],
@@ -206,8 +211,16 @@ export function RichTextEditor({
   const titleValue = onTitleChange ? (title ?? "") : localTitle;
   const titleEditable = isOwner;
 
+  const focusLastBlock = useCallback(() => {
+    const lastBlock = editor.document.at(-1);
+    if (!lastBlock) return;
+
+    editor.focus();
+    editor.setTextCursorPosition(lastBlock, "end");
+  }, [editor]);
+
   return (
-    <div className="flex-1 bg-background rounded-lg overflow-hidden flex flex-col">
+    <div className="flex-1 rounded-xl flex flex-col">
       <div className="shrink-0 px-4 md:px-13.5 pt-8 pb-4">
         <div className="flex items-start gap-3">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -249,9 +262,7 @@ export function RichTextEditor({
               className="mt-1 shrink-0"
               variant="primary"
               isDisabled={
-                isCommitting ||
-                collab.isCommitting ||
-                !hasUncommittedChanges
+                isCommitting || collab.isCommitting || !hasUncommittedChanges
               }
               isPending={isCommitting || collab.isCommitting}
               onPress={handleCommit}
@@ -288,7 +299,18 @@ export function RichTextEditor({
           </div>
         )}
       </div>
-      <div className="flex-1 min-h-0 flex flex-col bg-surface rounded-xl relative">
+      <div
+        className={cn(
+          "flex-1 min-h-[calc(70dvh)] flex flex-col rounded-xl relative",
+          resolvedTheme === "dark"
+            ? "bg-[oklch(0.145_0_0)]"
+            : "bg-[oklch(1_0_0)]",
+        )}
+        onClick={(event) => {
+          if (event.target !== event.currentTarget) return;
+          focusLastBlock();
+        }}
+      >
         <BlockNoteView
           editor={editor}
           theme={resolvedTheme === "dark" ? "dark" : "light"}
@@ -305,7 +327,7 @@ export function RichTextEditor({
           className="flex-1 rounded-xl"
         >
           <AIMenuController />
-          <FormattingToolbar />
+          <FormattingToolbarController formattingToolbar={FormattingToolbar} />
           <SuggestionMenuController
             triggerCharacter="/"
             getItems={getSlashMenuItems}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Button } from "@heroui/react/button";
 import {
@@ -32,7 +32,7 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { Input, Modal, useOverlayState } from "@heroui/react";
+import { Input, InputGroup, Modal, Tabs, useOverlayState } from "@heroui/react";
 import { toast } from "@heroui/react";
 import { useTheme } from "next-themes";
 import type { Doc } from "@noteey/backend/convex/_generated/dataModel";
@@ -56,6 +56,105 @@ const EMPTY_NOTES: Doc<"notes">[] = [];
 
 function generateShareCode(): string {
   return `${Date.now().toString(36).slice(-4)}${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+const PAGE_SLIDE_TRANSITION_STYLES = `
+:root {
+  --page-slide-dur: 200ms;
+  --page-fade-dur: 200ms;
+  --page-slide-distance: 8px;
+  --page-blur: 3px;
+  --page-stagger: 0ms;
+  --page-exit-enabled: 1;
+  --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.t-page-slide {
+  position: relative;
+}
+.t-page-slide .t-page[data-page-id="1"] {
+  --t-page-from-x: calc(var(--page-slide-distance) * -1);
+}
+.t-page-slide .t-page[data-page-id="2"] {
+  --t-page-from-x: var(--page-slide-distance);
+}
+.t-page-slide .t-page {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(calc(var(--t-page-from-x, 0px) * var(--page-exit-enabled)));
+  filter: blur(calc(var(--page-blur) * var(--page-exit-enabled)));
+  transition:
+    opacity var(--page-fade-dur) var(--page-fade-ease),
+    transform var(--page-slide-dur) var(--page-slide-ease),
+    filter var(--page-slide-dur) var(--page-slide-ease);
+  will-change: opacity, transform, filter;
+}
+.t-page-slide[data-page="1"] .t-page[data-page-id="1"],
+.t-page-slide[data-page="2"] .t-page[data-page-id="2"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  filter: blur(0);
+  transition-delay: var(--page-stagger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-page-slide .t-page { transition: none !important; }
+}
+`;
+
+const TEXT_SWAP_TRANSITION_STYLES = `
+:root {
+  --text-swap-dur: 150ms;
+  --text-swap-translate-y: 4px;
+  --text-swap-blur: 2px;
+  --text-swap-ease: ease-in-out;
+}
+
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter var(--text-swap-dur) var(--text-swap-ease),
+    opacity var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity;
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-text-swap { transition: none !important; }
+}
+`;
+
+function readCssMs(name: string, fallback: number): number {
+  if (typeof document === "undefined") return fallback;
+
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+  const value = Number.parseFloat(raw);
+
+  return Number.isFinite(value) ? value : fallback;
 }
 
 /**
@@ -103,6 +202,68 @@ export function ProfilePill({
   const [shareCode, setShareCode] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const generateLinkTextRef = useRef<HTMLSpanElement | null>(null);
+  const shareLinkContentRef = useRef<HTMLDivElement | null>(null);
+  const [generateLinkText, setGenerateLinkText] = useState(
+    "Generate Share Link",
+  );
+  const [showGeneratedLink, setShowGeneratedLink] = useState(false);
+
+  useEffect(() => {
+    const nextText = isGeneratingLink ? "Generating…" : "Generate Share Link";
+
+    if (nextText === generateLinkText) return;
+
+    const textElement = generateLinkTextRef.current;
+    if (!textElement) {
+      setGenerateLinkText(nextText);
+      return;
+    }
+
+    const duration = readCssMs("--text-swap-dur", 150);
+    textElement.classList.add("is-exit");
+
+    const timeout = window.setTimeout(() => {
+      setGenerateLinkText(nextText);
+      textElement.classList.remove("is-exit");
+      textElement.classList.add("is-enter-start");
+      void textElement.offsetWidth;
+      textElement.classList.remove("is-enter-start");
+    }, duration);
+
+    return () => {
+      window.clearTimeout(timeout);
+      textElement.classList.remove("is-exit", "is-enter-start");
+    };
+  }, [generateLinkText, isGeneratingLink]);
+
+  useEffect(() => {
+    const nextShowGeneratedLink = shareCode != null;
+
+    if (nextShowGeneratedLink === showGeneratedLink) return;
+
+    const contentElement = shareLinkContentRef.current;
+    if (!contentElement) {
+      setShowGeneratedLink(nextShowGeneratedLink);
+      return;
+    }
+
+    const duration = readCssMs("--text-swap-dur", 150);
+    contentElement.classList.add("is-exit");
+
+    const timeout = window.setTimeout(() => {
+      setShowGeneratedLink(nextShowGeneratedLink);
+      contentElement.classList.remove("is-exit");
+      contentElement.classList.add("is-enter-start");
+      void contentElement.offsetWidth;
+      contentElement.classList.remove("is-enter-start");
+    }, duration);
+
+    return () => {
+      window.clearTimeout(timeout);
+      contentElement.classList.remove("is-exit", "is-enter-start");
+    };
+  }, [shareCode, showGeneratedLink]);
 
   const handleSelectNote = useCallback(
     (id: string) => {
@@ -247,10 +408,7 @@ export function ProfilePill({
               </DropdownItem>
             )}
             <DropdownSubmenuTrigger>
-              <DropdownItem
-                id="shared"
-                textValue="Shared with me"
-              >
+              <DropdownItem id="shared" textValue="Shared with me">
                 <Users className="size-3.5" />
                 {sharedNotesLoading ? (
                   <TextShimmer as="span" className="text-xs">
@@ -267,7 +425,11 @@ export function ProfilePill({
                 >
                   {sharedNotesLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                      <DropdownItem key={`shared-skel-${i}`} textValue="" isDisabled>
+                      <DropdownItem
+                        key={`shared-skel-${i}`}
+                        textValue=""
+                        isDisabled
+                      >
                         <div className="flex items-center gap-2 w-full">
                           <Skeleton
                             className="size-3.5 shrink-0 rounded"
@@ -282,7 +444,11 @@ export function ProfilePill({
                       </DropdownItem>
                     ))
                   ) : sharedNotes.length === 0 ? (
-                    <DropdownItem id="empty-shared" textValue="No shared notes" isDisabled>
+                    <DropdownItem
+                      id="empty-shared"
+                      textValue="No shared notes"
+                      isDisabled
+                    >
                       No shared notes
                     </DropdownItem>
                   ) : (
@@ -338,6 +504,8 @@ export function ProfilePill({
           <Modal.Backdrop>
             <Modal.Container placement="center" size="sm">
               <Modal.Dialog className="overflow-hidden rounded-xl p-6 max-w-sm w-full mx-4">
+                <style>{PAGE_SLIDE_TRANSITION_STYLES}</style>
+                <style>{TEXT_SWAP_TRANSITION_STYLES}</style>
                 <h2 className="text-lg font-semibold text-foreground mb-1">
                   Share note
                 </h2>
@@ -345,146 +513,177 @@ export function ProfilePill({
                   Share &ldquo;{noteTitle || "Untitled"}&rdquo; with a
                   collaborator.
                 </p>
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    variant={shareMode === "userId" ? "primary" : "ghost"}
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => {
-                      setShareMode("userId");
-                      setShareCode(null);
-                    }}
-                  >
-                    User ID
-                  </Button>
-                  <Button
-                    variant={shareMode === "link" ? "primary" : "ghost"}
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => {
-                      setShareMode("link");
-                      setShareUserId("");
-                    }}
-                  >
-                    Share Link
-                  </Button>
-                </div>
-                {shareMode === "userId" ? (
-                  <>
-                    <Input
-                      className="w-full rounded-full"
-                      value={shareUserId}
-                      disabled={isSharing}
-                      onChange={(e) => setShareUserId(e.target.value)}
-                      placeholder="Enter user ID"
-                    />
-                    <div className="flex justify-end gap-2 mt-4">
-                      <Button
-                        variant="ghost"
-                        isDisabled={isSharing}
+                <Tabs className="w-full flex flex-col justify-center">
+                  <Tabs.ListContainer className="w-[calc(100%-16px)] mx-auto">
+                    <Tabs.List aria-label="Share options">
+                      <Tabs.Tab
+                        id="user-id"
                         onPress={() => {
-                          shareState.close();
-                          setShareUserId("");
                           setShareMode("userId");
+                          setShareCode(null);
                         }}
                       >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="primary"
-                        isDisabled={!shareUserId.trim() || isSharing}
-                        isPending={isSharing}
-                        onPress={async () => {
-                          if (!noteId || !shareUserId.trim() || !onShareNote)
-                            return;
-                          setIsSharing(true);
-                          try {
-                            await onShareNote(noteId, shareUserId.trim());
-                            toast.success("Note shared successfully");
+                        User ID
+                        <Tabs.Indicator />
+                      </Tabs.Tab>
+                      <Tabs.Tab
+                        id="share-link"
+                        onPress={() => {
+                          setShareMode("link");
+                          setShareUserId("");
+                        }}
+                      >
+                        Share Link
+                        <Tabs.Indicator />
+                      </Tabs.Tab>
+                    </Tabs.List>
+                  </Tabs.ListContainer>
+
+                  <div
+                    className="t-page-slide mt-4 min-h-[132px] w-full overflow-hidden"
+                    data-page={shareMode === "userId" ? 1 : 2}
+                  >
+                    <Tabs.Panel
+                      id="user-id"
+                      className="t-page w-full"
+                      data-page-id="1"
+                    >
+                      <Input
+                        className="w-full rounded-full"
+                        value={shareUserId}
+                        disabled={isSharing}
+                        onChange={(e) => setShareUserId(e.target.value)}
+                        placeholder="Enter user ID"
+                      />
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button
+                          variant="ghost"
+                          isDisabled={isSharing}
+                          onPress={() => {
                             shareState.close();
                             setShareUserId("");
-                          } catch (error) {
-                            toast.danger(
-                              error instanceof Error
-                                ? error.message
-                                : "Failed to share note",
-                            );
-                          } finally {
-                            setIsSharing(false);
-                          }
-                        }}
+                            setShareMode("userId");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="primary"
+                          isDisabled={!shareUserId.trim() || isSharing}
+                          isPending={isSharing}
+                          onPress={async () => {
+                            if (!noteId || !shareUserId.trim() || !onShareNote)
+                              return;
+                            setIsSharing(true);
+                            try {
+                              await onShareNote(noteId, shareUserId.trim());
+                              toast.success("Note shared successfully");
+                              shareState.close();
+                              setShareUserId("");
+                            } catch (error) {
+                              toast.danger(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Failed to share note",
+                              );
+                            } finally {
+                              setIsSharing(false);
+                            }
+                          }}
+                        >
+                          {isSharing ? "Sharing…" : "Share"}
+                        </Button>
+                      </div>
+                    </Tabs.Panel>
+
+                    <Tabs.Panel
+                      id="share-link"
+                      className="t-page"
+                      data-page-id="2"
+                    >
+                      <div
+                        ref={shareLinkContentRef}
+                        className="t-text-swap w-full"
                       >
-                        {isSharing ? "Sharing…" : "Share"}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {shareCode ? (
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-2">
-                          <span className="text-sm truncate flex-1">
-                            {shareUrl}
-                          </span>
+                        {showGeneratedLink ? (
+                          <div className="flex flex-col gap-3">
+                            <InputGroup className="rounded-full">
+                              <InputGroup.Input
+                                value={shareUrl}
+                                readOnly
+                                className="truncate"
+                              />
+                              <InputGroup.Suffix>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onPress={async () => {
+                                    await navigator.clipboard.writeText(
+                                      shareUrl,
+                                    );
+                                    toast.success("Link copied to clipboard");
+                                  }}
+                                >
+                                  Copy
+                                </Button>
+                              </InputGroup.Suffix>
+                            </InputGroup>
+
+                            <p className="text-xs text-muted-foreground">
+                              Anyone with this link can edit this note.
+                            </p>
+                          </div>
+                        ) : (
                           <Button
-                            size="sm"
-                            variant="ghost"
+                            variant="primary"
+                            className="w-full"
+                            isPending={isGeneratingLink}
                             onPress={async () => {
-                              await navigator.clipboard.writeText(shareUrl);
-                              toast.success("Link copied to clipboard");
+                              if (!noteId || !onCreateShareCode) return;
+                              setIsGeneratingLink(true);
+                              try {
+                                await delay(700);
+                                const code = generateShareCode();
+                                await onCreateShareCode(noteId, code);
+                                const url = `${window.location.origin}${window.location.pathname}?share=${code}`;
+                                setShareCode(code);
+                                setShareUrl(url);
+                              } catch {
+                                const newCode = generateShareCode();
+                                await onCreateShareCode!(noteId, newCode);
+                                const url = `${window.location.origin}${window.location.pathname}?share=${newCode}`;
+                                setShareCode(newCode);
+                                setShareUrl(url);
+                              } finally {
+                                setIsGeneratingLink(false);
+                              }
                             }}
                           >
-                            Copy
+                            <span
+                              ref={generateLinkTextRef}
+                              className="t-text-swap"
+                            >
+                              {generateLinkText}
+                            </span>
                           </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Anyone with this link can edit this note.
-                        </p>
+                        )}
                       </div>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        isPending={isGeneratingLink}
-                        onPress={async () => {
-                          if (!noteId || !onCreateShareCode) return;
-                          setIsGeneratingLink(true);
-                          try {
-                            const code = generateShareCode();
-                            await onCreateShareCode(noteId, code);
-                            const url = `${window.location.origin}${window.location.pathname}?share=${code}`;
-                            setShareCode(code);
-                            setShareUrl(url);
-                          } catch {
-                            const newCode = generateShareCode();
-                            await onCreateShareCode!(noteId, newCode);
-                            const url = `${window.location.origin}${window.location.pathname}?share=${newCode}`;
-                            setShareCode(newCode);
-                            setShareUrl(url);
-                          } finally {
-                            setIsGeneratingLink(false);
-                          }
-                        }}
-                      >
-                        {isGeneratingLink
-                          ? "Generating…"
-                          : "Generate Share Link"}
-                      </Button>
-                    )}
-                    <div className="flex justify-end gap-2 mt-4">
-                      <Button
-                        variant="ghost"
-                        onPress={() => {
-                          shareState.close();
-                          setShareCode(null);
-                          setShareUrl("");
-                          setShareMode("userId");
-                        }}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  </>
-                )}
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button
+                          variant="ghost"
+                          onPress={() => {
+                            shareState.close();
+                            setShareCode(null);
+                            setShareUrl("");
+                            setShareMode("userId");
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </Tabs.Panel>
+                  </div>
+                </Tabs>
               </Modal.Dialog>
             </Modal.Container>
           </Modal.Backdrop>
